@@ -247,6 +247,11 @@ import MotionBackground from "../components/MotionBackground.astro";
               </div>
 
               <p class="muted">{subscription.description}</p>
+
+              <div class="subscription-actions">
+                <a href="/pricing" class="btn btn-primary">Управление тарифом</a>
+                <a href="/download" class="btn btn-secondary">Клиент</a>
+              </div>
             </div>
           </article>
         </section>
@@ -359,37 +364,59 @@ import MotionBackground from "../components/MotionBackground.astro";
 
         <article class="panel download-panel" data-reveal="up" style="--delay: 260ms; --dur: 820ms;">
           <div class="panel-inner download-inner">
-            <div>
-              <p class="eyebrow">клиент</p>
-              <h2 class="title-lg">Astra для Windows</h2>
-              <p class="muted">Скачай последнюю версию клиента для Windows.</p>
-            </div>
+            <div class="download-copy">
+              <div class="section-head">
+                <p class="eyebrow">клиент</p>
+                <h2 class="title-lg">Astra для Windows</h2>
+                <p class="muted">Скачай последнюю версию клиента для Windows, проверь доступ и быстро вернись к тарифу или сессиям без лишних переходов.</p>
+              </div>
 
-            <div class="assurance-strip">
-              <div class="assurance-card" data-reveal="fade" style="--delay: 290ms; --dur: 720ms;">
-                <strong>Скачать клиент</strong>
-                <span>Загрузка последней версии клиента для Windows.</span>
+              <div class="hero-pills hero-pills--compact download-pills">
+                <span class="pill">Windows 10 / 11</span>
+                <span class="pill">Последняя версия</span>
+                <span class="pill">Лицензия {subscription.planLabel}</span>
               </div>
-              <div class="assurance-card" data-reveal="fade" style="--delay: 330ms; --dur: 740ms;">
-                <strong>Тариф и доступ</strong>
-                <span>Проверь текущий тариф и продли доступ при необходимости.</span>
-              </div>
-              <div class="assurance-card" data-reveal="fade" style="--delay: 370ms; --dur: 760ms;">
-                <strong>Сессии и история</strong>
-                <span>Посмотри активные устройства и последние действия в аккаунте.</span>
+
+              <div class="download-feature-grid">
+                <div class="assurance-card" data-reveal="fade" style="--delay: 290ms; --dur: 720ms;">
+                  <strong>Скачать клиент</strong>
+                  <span>Загрузка последней версии клиента для Windows.</span>
+                </div>
+                <div class="assurance-card" data-reveal="fade" style="--delay: 330ms; --dur: 740ms;">
+                  <strong>Тариф и доступ</strong>
+                  <span>Проверь текущий тариф и продли доступ при необходимости.</span>
+                </div>
+                <div class="assurance-card" data-reveal="fade" style="--delay: 370ms; --dur: 760ms;">
+                  <strong>Сессии и история</strong>
+                  <span>Посмотри активные устройства и последние действия в аккаунте.</span>
+                </div>
               </div>
             </div>
 
             <div class="download-side">
-              <div class="mini-status">
-                <span>Версия</span>
-                <strong>v2.4.1</strong>
+              <div class="download-meta-grid">
+                <div class="mini-status">
+                  <span>Версия</span>
+                  <strong>v2.4.1</strong>
+                </div>
+                <div class="mini-status">
+                  <span>Платформа</span>
+                  <strong>Windows 10 / 11</strong>
+                </div>
+                <div class="mini-status">
+                  <span>Тариф</span>
+                  <strong>{subscription.planLabel}</strong>
+                </div>
+                <div class="mini-status">
+                  <span>Устройства</span>
+                  <strong>{devicesCount}</strong>
+                </div>
               </div>
-              <div class="mini-status">
-                <span>Платформа</span>
-                <strong>Windows 10 / 11</strong>
+
+              <div class="download-actions">
+                <a href="/download" class="btn btn-primary btn-full">Открыть загрузку</a>
+                <a href="/pricing" class="btn btn-secondary btn-full">Открыть тарифы</a>
               </div>
-              <a href="/download" class="btn btn-primary">Открыть загрузку</a>
             </div>
           </div>
         </article>
@@ -717,14 +744,33 @@ import MotionBackground from "../components/MotionBackground.astro";
 
   .download-inner {
     display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+    grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.92fr);
     gap: 18px;
-    align-items: center;
+    align-items: start;
   }
 
+  .download-copy,
   .download-side {
     display: grid;
-    gap: 10px;
+    gap: 14px;
+    align-content: start;
+  }
+
+  .download-feature-grid,
+  .download-meta-grid {
+    display: grid;
+    gap: 12px;
+  }
+
+  .download-feature-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .download-actions,
+  .subscription-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
   }
 
   .modal-actions-spaced {
@@ -999,7 +1045,11 @@ import MotionBackground from "../components/MotionBackground.astro";
     .identity-stats,
     .summary-grid,
     .compact-grid,
-    .devices-strip {
+    .devices-strip,
+    .download-meta-grid,
+    .download-feature-grid,
+    .download-actions,
+    .subscription-actions {
       grid-template-columns: 1fr;
     }
 
@@ -1118,7 +1168,19 @@ import MotionBackground from "../components/MotionBackground.astro";
   }
 
   .download-inner {
-    grid-template-columns: minmax(0, 1.1fr) minmax(290px, 0.9fr);
+    grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.88fr);
+  }
+
+  .download-copy .section-head {
+    margin-bottom: 0;
+  }
+
+  .subscription-actions {
+    margin-top: 2px;
+  }
+
+  .download-pills {
+    margin-top: 2px;
   }
 
   .download-side {
@@ -1128,6 +1190,19 @@ import MotionBackground from "../components/MotionBackground.astro";
     border: 1px solid rgba(255,255,255,0.06);
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
     align-content: start;
+  }
+
+  .download-feature-grid .assurance-card {
+    min-height: 0;
+    padding: 16px 18px;
+  }
+
+  .download-meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .download-actions {
+    grid-template-columns: 1fr;
   }
 
   .assurance-strip {

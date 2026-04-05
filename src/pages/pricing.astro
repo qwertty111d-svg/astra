@@ -116,12 +116,41 @@ import MotionBackground from "../components/MotionBackground.astro";
             <div class="panel-inner pricing-hero-copy">
               <p class="eyebrow">тарифы</p>
               <h1 class="title-xl">Выбери режим Astra</h1>
-              <p class="muted hero-copy-text">Выбери тариф и перейди к оплате.</p>
+              <p class="muted hero-copy-text">Сравни режимы, выбери подходящий доступ и сразу перейди к оплате без лишних шагов.</p>
 
               <div class="hero-pills">
                 <span class="pill">3 тарифа</span>
                 <span class="pill">Условия оплаты</span>
                 <span class="pill">Способы оплаты</span>
+              </div>
+
+              <div class="hero-highlight-grid">
+                <div class="hero-highlight-card">
+                  <span>Популярный режим</span>
+                  <strong>Pro · 599₽</strong>
+                  <small>Для постоянного использования и полного набора функций.</small>
+                </div>
+                <div class="hero-highlight-card">
+                  <span>Lifetime</span>
+                  <strong>1990₽ один раз</strong>
+                  <small>Пожизненный доступ без ежемесячной оплаты.</small>
+                </div>
+                <div class="hero-highlight-card">
+                  <span>Free</span>
+                  <strong>Быстрый старт</strong>
+                  <small>Можно скачать и попробовать без оплаты.</small>
+                </div>
+                <div class="hero-highlight-card">
+                  <span>Оплата</span>
+                  <strong>Карта / СБП / крипта</strong>
+                  <small>Подтверждение заявки после оплаты и активация на аккаунте.</small>
+                </div>
+              </div>
+
+              <div class="hero-actions pricing-hero-actions">
+                <button class="btn btn-primary" type="button" data-plan="Pro">Выбрать Pro</button>
+                <button class="btn btn-secondary" type="button" data-plan="Lifetime">Открыть Lifetime</button>
+                <a href="/download" class="btn btn-ghost">Скачать Free</a>
               </div>
             </div>
           </article>
@@ -474,9 +503,9 @@ import MotionBackground from "../components/MotionBackground.astro";
 
   .pricing-hero-copy {
     display: grid;
-    gap: 14px;
-    align-content: center;
-    min-height: 240px;
+    gap: 16px;
+    align-content: start;
+    min-height: 100%;
   }
 
   .hero-copy-text {
@@ -487,6 +516,56 @@ import MotionBackground from "../components/MotionBackground.astro";
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
+  }
+
+  .hero-highlight-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .hero-highlight-card {
+    position: relative;
+    display: grid;
+    gap: 8px;
+    min-height: 0;
+    padding: 16px 18px;
+    border-radius: 22px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02));
+    border: 1px solid rgba(255,255,255,0.065);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 14px 34px rgba(2,4,12,0.18);
+  }
+
+  .hero-highlight-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(135deg, rgba(161,130,255,0.05), transparent 36%, transparent 72%, rgba(255,255,255,0.03));
+  }
+
+  .hero-highlight-card span {
+    color: rgba(201, 208, 224, 0.74);
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  .hero-highlight-card strong {
+    font-size: 1.02rem;
+    letter-spacing: -0.03em;
+  }
+
+  .hero-highlight-card small {
+    color: rgba(201, 208, 224, 0.74);
+    line-height: 1.5;
+  }
+
+  .pricing-hero-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
   }
 
   .compare-panel {
@@ -1089,7 +1168,9 @@ import MotionBackground from "../components/MotionBackground.astro";
   @media (max-width: 1180px) {
     .pricing-hero,
     .plans-grid,
-    .payments-wide-grid {
+    .payments-wide-grid,
+    .hero-highlight-grid,
+    .pricing-hero-actions {
       grid-template-columns: 1fr;
     }
 
@@ -1192,7 +1273,8 @@ import MotionBackground from "../components/MotionBackground.astro";
   .pricing-hero-copy,
   .compare-panel--hero,
   .tariff-card__inner,
-  .payments-panel {
+  .payments-panel,
+  .hero-highlight-grid {
     gap: 18px;
   }
 

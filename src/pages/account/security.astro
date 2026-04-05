@@ -99,31 +99,50 @@ import MotionBackground from "../../components/MotionBackground.astro";
         <section class="security-hero">
           <article class="panel" data-reveal="left" style="--delay: 70ms; --dur: 620ms;">
             <div class="panel-inner hero-summary">
-              <div class="section-head">
-                <p class="eyebrow">безопасность</p>
-                <h1 class="title-xl">Центр безопасности</h1>
-                <p class="muted hero-note">Здесь можно сменить пароль, почту, 2FA и управлять сессиями.</p>
-              </div>
+              <div class="hero-summary-grid">
+                <div class="security-hero-copy">
+                  <div class="section-head">
+                    <p class="eyebrow">безопасность</p>
+                    <h1 class="title-xl">Центр безопасности</h1>
+                    <p class="muted hero-note">Здесь можно сменить пароль, почту, включить 2FA и быстро закрыть лишние сессии без беготни по странице.</p>
+                  </div>
 
-              <div class="hero-pills hero-pills--compact">
-                <span class="pill">Пароль</span>
-                <span class="pill">2FA</span>
-                <span class="pill">Сессии</span>
-              </div>
+                  <div class="hero-pills hero-pills--compact">
+                    <span class="pill">Пароль</span>
+                    <span class="pill">2FA</span>
+                    <span class="pill">Сессии</span>
+                  </div>
 
-              <div class="quick-grid">
-                <button class="quick-action quick-action--primary" type="button" data-open-modal="passwordModal">
-                  <strong>Пароль</strong>
-                  <span>обновить доступ и завершить старые сессии</span>
-                </button>
-                <button class="quick-action" type="button" data-open-modal="emailModal">
-                  <strong>Почта</strong>
-                  <span>сменить адрес или отправить письмо повторно</span>
-                </button>
-                <button class="quick-action" type="button" data-open-modal="sessionsModal">
-                  <strong>Сессии</strong>
-                  <span>завершить лишние устройства и оставить текущее</span>
-                </button>
+                  <div class="hero-mini-grid">
+                    <div class="mini-status">
+                      <span>Почта</span>
+                      <strong>{user.emailVerified ? "Подтверждена" : "Требует проверки"}</strong>
+                    </div>
+                    <div class="mini-status">
+                      <span>2FA</span>
+                      <strong>{user.twoFactorEnabled ? "Включена" : "Не подключена"}</strong>
+                    </div>
+                    <div class="mini-status">
+                      <span>Сессии</span>
+                      <strong>{sessions.length} активных</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="quick-grid quick-grid--stack">
+                  <button class="quick-action quick-action--primary" type="button" data-open-modal="passwordModal">
+                    <strong>Сменить пароль</strong>
+                    <span>обновить доступ и завершить старые сессии</span>
+                  </button>
+                  <button class="quick-action" type="button" data-open-modal="emailModal">
+                    <strong>Сменить почту</strong>
+                    <span>сменить адрес или отправить письмо повторно</span>
+                  </button>
+                  <button class="quick-action" type="button" data-open-modal="sessionsModal">
+                    <strong>Завершить сессии</strong>
+                    <span>оставить текущее устройство и убрать лишние входы</span>
+                  </button>
+                </div>
               </div>
             </div>
           </article>
@@ -1007,7 +1026,26 @@ import MotionBackground from "../../components/MotionBackground.astro";
   }
 
   .hero-summary .section-head { margin-bottom: 16px; }
-  .hero-note { max-width: 62ch; }
+  .hero-note { max-width: 54ch; }
+
+  .hero-summary-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.02fr) minmax(290px, 0.98fr);
+    gap: 18px;
+    align-items: start;
+  }
+
+  .security-hero-copy {
+    display: grid;
+    gap: 14px;
+    align-content: start;
+  }
+
+  .hero-mini-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
 
   .quick-grid {
     display: grid;
@@ -1015,11 +1053,15 @@ import MotionBackground from "../../components/MotionBackground.astro";
     gap: 12px;
   }
 
+  .quick-grid--stack {
+    grid-template-columns: 1fr;
+  }
+
   .quick-action {
     text-align: left;
     display: grid;
     gap: 8px;
-    min-height: 96px;
+    min-height: 0;
     padding: 18px 18px 16px;
     border-radius: 22px;
     color: var(--text);
@@ -1313,13 +1355,15 @@ import MotionBackground from "../../components/MotionBackground.astro";
   @media (max-width: 1120px) {
     .security-hero,
     .stack-layout,
-    .twofa-grid { grid-template-columns: 1fr; }
+    .twofa-grid,
+    .hero-summary-grid { grid-template-columns: 1fr; }
   }
 
   @media (max-width: 760px) {
     .quick-grid,
     .summary-grid,
-    .devices-strip {
+    .devices-strip,
+    .hero-mini-grid {
       grid-template-columns: 1fr;
     }
 
@@ -1373,7 +1417,8 @@ import MotionBackground from "../../components/MotionBackground.astro";
   /* unified structure polish v24 */
   .security-hero,
   .stack-layout,
-  .twofa-grid {
+  .twofa-grid,
+  .hero-summary-grid {
     gap: 18px;
   }
 
@@ -1388,11 +1433,13 @@ import MotionBackground from "../../components/MotionBackground.astro";
   .hero-summary,
   .side-highlight,
   .devices-panel,
-  .twofa-shell {
+  .twofa-shell,
+  .security-hero-copy {
     gap: 18px;
   }
 
-  .quick-grid {
+  .quick-grid,
+  .hero-mini-grid {
     gap: 12px;
   }
 
