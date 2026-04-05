@@ -1,0 +1,10 @@
+---
+export interface Props {
+  height?: number;
+  width?: string;
+  rounded?: string;
+  class?: string;
+}
+const { height = 18, width = "100%", rounded = "14px", class: className = "" } = Astro.props;
+---
+<div class={`ui-skeleton ${className}`} style={`height:${height}px;width:${width};border-radius:${rounded};`}></div>

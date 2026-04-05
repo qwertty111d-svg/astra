@@ -1,0 +1,43 @@
+---
+export interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+  canonical?: string;
+  noindex?: boolean;
+  type?: "website" | "article";
+}
+const {
+  title = "Astra Boost",
+  description = "Оптимизация сети и системы для Windows 10/11.",
+  image = "/og-image.svg",
+  canonical,
+  noindex = false,
+  type = "website",
+} = Astro.props;
+
+import { getSiteUrl } from "../lib/server/env.js";
+const site = getSiteUrl();
+const imageUrl = image.startsWith("http") ? image : `${site}${image}`;
+const canonicalUrl = canonical ? (canonical.startsWith("http") ? canonical : `${site}${canonical}`) : undefined;
+---
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#8d63ff" />
+<meta name="description" content={description} />
+{canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+<meta property="og:type" content={type} />
+<meta property="og:site_name" content="Astra Boost" />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:image" content={imageUrl} />
+{canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={imageUrl} />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" href="/favicon.ico" />
+<link rel="manifest" href="/site.webmanifest" />
+<meta name="msapplication-config" content="/browserconfig.xml" />
+{noindex && <meta name="robots" content="noindex, nofollow" />}

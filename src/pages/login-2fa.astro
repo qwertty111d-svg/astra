@@ -1,0 +1,171 @@
+---
+export const prerender = false;
+import "../styles/astra-auth.css";
+const turnstileSiteKey = "";
+import MotionBackground from "../components/MotionBackground.astro";
+---
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Подтверждение 2FA — Astra</title>
+    
+  </head>
+  <body >
+    <MotionBackground />
+    <a href="/" class="auth-back" aria-label="Вернуться на главную страницу">
+      <span>←</span>
+      <span class="auth-back__brand">ASTRA</span>
+    </a>
+
+    <div class="auth-shell">
+      <div class="grid-noise"></div>
+      <div class="orb orb-a"></div>
+      <div class="orb orb-b"></div>
+      <div class="orb orb-c"></div>
+      
+<section class="auth-card">
+  <div class="auth-brand"><span class="auth-dot"></span><span>astra</span></div>
+  <p class="eyebrow">astra 2fa</p>
+  <h1 class="auth-title">Подтверждение 2FA</h1>
+  <p class="auth-copy">Введи код из приложения-аутентификатора или используй recovery code.</p>
+  <div class="auth-form">
+    <div class="switch-row">
+      <button class="switch-btn is-active" type="button" id="totpTab">Код</button>
+      <button class="switch-btn" type="button" id="recoveryTab">Recovery code</button>
+    </div>
+    <div id="totpPanel">
+      <div class="code-grid">
+        <input class="input code-cell js-2fa-code" inputmode="numeric" maxlength="1" />
+        <input class="input code-cell js-2fa-code" inputmode="numeric" maxlength="1" />
+        <input class="input code-cell js-2fa-code" inputmode="numeric" maxlength="1" />
+        <input class="input code-cell js-2fa-code" inputmode="numeric" maxlength="1" />
+        <input class="input code-cell js-2fa-code" inputmode="numeric" maxlength="1" />
+        <input class="input code-cell js-2fa-code" inputmode="numeric" maxlength="1" />
+      </div>
+    </div>
+    <div id="recoveryPanel" class="hidden">
+      <div class="field">
+        <label for="recoveryCode">Recovery code</label>
+        <div class="input-wrap"><input class="input" id="recoveryCode" type="text" placeholder="ABCDE-12345" autocomplete="one-time-code" /></div>
+      </div>
+    </div>
+    <div class="auth-actions">
+      <button class="btn btn-primary" id="verifyBtn" type="button">Подтвердить</button>
+      <a class="btn btn-secondary" href="/login">Назад</a>
+    </div>
+    <p id="twoFaError" class="status"></p>
+  </div>
+</section>
+
+    </div>
+
+    <script is:inline>
+
+      const qs = (selector) => document.querySelector(selector);
+      const qsa = (selector) => Array.from(document.querySelectorAll(selector));
+
+      function attachPasswordToggle(buttonId, inputId) {
+        const button = document.getElementById(buttonId);
+        const input = document.getElementById(inputId);
+        if (!(button instanceof HTMLElement) || !(input instanceof HTMLInputElement)) return;
+        button.addEventListener("click", () => {
+          const hidden = input.type === "password";
+          input.type = hidden ? "text" : "password";
+          button.textContent = hidden ? "✕" : "◐";
+        });
+      }
+
+      function attachCodeInputs(selector) {
+        const inputs = qsa(selector);
+        inputs.forEach((input, index) => {
+          input.addEventListener("input", () => {
+            input.value = input.value.replace(/\D/g, "").slice(-1);
+            if (input.value && inputs[index + 1]) inputs[index + 1].focus();
+          });
+          input.addEventListener("keydown", (event) => {
+            if (event.key === "Backspace" && !input.value && inputs[index - 1]) inputs[index - 1].focus();
+            if (event.key === "ArrowLeft" && inputs[index - 1]) inputs[index - 1].focus();
+            if (event.key === "ArrowRight" && inputs[index + 1]) inputs[index + 1].focus();
+          });
+          input.addEventListener("paste", (event) => {
+            const pasted = (event.clipboardData?.getData("text") || "").replace(/\D/g, "").slice(0, inputs.length);
+            if (!pasted) return;
+            event.preventDefault();
+            pasted.split("").forEach((char, i) => { if (inputs[i]) inputs[i].value = char; });
+            inputs[Math.min(pasted.length - 1, inputs.length - 1)]?.focus();
+          });
+        });
+        return () => inputs.map((input) => input.value).join("");
+      }
+
+      window.onLoginTurnstileSuccess = (token) => {
+        window.__astraLoginTurnstile = token;
+      };
+
+      window.onLoginTurnstileExpired = () => {
+        window.__astraLoginTurnstile = "";
+      };
+
+      window.onRegisterTurnstileSuccess = (token) => {
+        window.__astraRegisterTurnstile = token;
+      };
+
+      window.onRegisterTurnstileExpired = () => {
+        window.__astraRegisterTurnstile = "";
+      };
+
+    </script>
+    
+<script is:inline>
+(() => {
+  const verifyBtn = document.getElementById("verifyBtn");
+  const errorBox = document.getElementById("twoFaError");
+  const totpTab = document.getElementById("totpTab");
+  const recoveryTab = document.getElementById("recoveryTab");
+  const totpPanel = document.getElementById("totpPanel");
+  const recoveryPanel = document.getElementById("recoveryPanel");
+  const recoveryInput = document.getElementById("recoveryCode");
+  const getCodeValue = attachCodeInputs(".js-2fa-code");
+  let mode = "totp";
+
+  function switchMode(nextMode) {
+    mode = nextMode;
+    totpTab.classList.toggle("is-active", mode === "totp");
+    recoveryTab.classList.toggle("is-active", mode === "recovery");
+    totpPanel.classList.toggle("hidden", mode !== "totp");
+    recoveryPanel.classList.toggle("hidden", mode !== "recovery");
+    errorBox.textContent = "";
+  }
+
+  async function submitTwoFactor() {
+    errorBox.textContent = "";
+    const payload = mode === "totp" ? { code: getCodeValue() } : { recoveryCode: recoveryInput?.value ?? "" };
+    if (mode === "totp" && payload.code.length !== 6) { errorBox.textContent = "Введи 6-значный код."; return; }
+    if (mode === "recovery" && !String(payload.recoveryCode).trim()) { errorBox.textContent = "Введи recovery code."; return; }
+
+    try {
+      verifyBtn.disabled = true;
+      verifyBtn.textContent = "Проверяем...";
+      const response = await fetch("/api/auth/login-2fa", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) throw new Error(data.error || "Ошибка подтверждения 2FA");
+      window.location.href = data.redirectTo || "/account";
+    } catch (error) {
+      errorBox.textContent = error?.message || "Ошибка подтверждения 2FA";
+    } finally {
+      verifyBtn.disabled = false;
+      verifyBtn.textContent = "Подтвердить";
+    }
+  }
+
+  totpTab?.addEventListener("click", () => switchMode("totp"));
+  recoveryTab?.addEventListener("click", () => switchMode("recovery"));
+  verifyBtn?.addEventListener("click", submitTwoFactor);
+  qsa(".js-2fa-code").forEach((input) => input.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); submitTwoFactor(); }}));
+  recoveryInput?.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); submitTwoFactor(); }});
+})();
+</script>
+
+  </body>
+</html>

@@ -1,0 +1,1018 @@
+---
+export const prerender = false;
+
+import "../styles/astra-members.css";
+import { getRecentAuditLogs, getSessionsForUser } from "../lib/server/auth.js";
+import { isAdminEmail } from "../lib/server/payments.js";
+import AccountTopBar from "../components/AccountTopBar.astro";
+
+const currentUser = Astro.locals.user;
+const currentSession = Astro.locals.session;
+
+if (!currentUser) {
+  return Astro.redirect("/login?next=/account");
+}
+
+const sessions = await getSessionsForUser(currentUser.id);
+const recentActions = await getRecentAuditLogs(currentUser.id, 6);
+const devicesCount = sessions.length;
+const isAdmin = isAdminEmail(currentUser.email);
+
+function formatActionLabel(action) {
+  const map = {
+    login_success: "Успешный вход",
+    login_success_2fa: "Вход через 2FA",
+    login_success_recovery_code: "Вход по recovery code",
+    password_changed: "Пароль изменён",
+    email_change_started: "Запущена смена email",
+    other_sessions_revoked: "Завершены другие сессии",
+    "2fa_enabled": "2FA подключена",
+    "2fa_disabled": "2FA отключена",
+    "2fa_disabled_by_recovery": "2FA отключена recovery code",
+    "2fa_recovery_codes_regenerated": "Обновлены recovery codes",
+  };
+  return map[action] ?? action;
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+}
+
+function formatDateTime(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function pluralizeDays(value) {
+  const mod10 = value % 10;
+  const mod100 = value % 100;
+
+  if (mod10 === 1 && mod100 !== 11) return "день";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "дня";
+  return "дней";
+}
+
+function getSubscription(plan, subscriptionEndsAt) {
+  const normalizedPlan = String(plan || "FREE").toUpperCase();
+  const now = new Date();
+  const dayMs = 1000 * 60 * 60 * 24;
+
+  if (!subscriptionEndsAt) {
+    return {
+      key: "free",
+      statusLabel: "Базовый доступ",
+      planLabel: normalizedPlan,
+      description: "Аккаунт готов к работе. При необходимости тариф можно расширить в любой момент.",
+      endsAtText: "Без срока",
+      heroValue: "Базовый",
+      heroLabel: "Режим",
+      paymentText: "Не требуется",
+      actionLabel: "Открыть тарифы",
+    };
+  }
+
+  const endDate = new Date(subscriptionEndsAt);
+
+  if (Number.isNaN(endDate.getTime())) {
+    return {
+      key: "free",
+      statusLabel: "Базовый доступ",
+      planLabel: "FREE",
+      description: "Аккаунт готов к работе. При необходимости тариф можно расширить в любой момент.",
+      endsAtText: "Без срока",
+      heroValue: "Базовый",
+      heroLabel: "Режим",
+      paymentText: "Не требуется",
+      actionLabel: "Открыть тарифы",
+    };
+  }
+
+  const diffMs = endDate.getTime() - now.getTime();
+
+  if (diffMs <= 0) {
+    return {
+      key: "expired",
+      statusLabel: "Доступ истёк",
+      planLabel: normalizedPlan,
+      description: "Продли подписку, чтобы снова открыть все возможности Astra.",
+      endsAtText: formatDate(subscriptionEndsAt),
+      heroValue: "Истёк",
+      heroLabel: "Статус",
+      paymentText: "Требуется оплата",
+      actionLabel: "Продлить доступ",
+    };
+  }
+
+  const daysLeft = Math.ceil(diffMs / dayMs);
+
+  return {
+    key: "active",
+    statusLabel: "Полный доступ",
+    planLabel: normalizedPlan,
+    description: `Тариф активен до ${formatDate(subscriptionEndsAt)}. Все функции доступны без ограничений.`,
+    endsAtText: formatDate(subscriptionEndsAt),
+    heroValue: `${daysLeft} ${pluralizeDays(daysLeft)}`,
+    heroLabel: "Осталось",
+    paymentText: "Оплачено",
+    actionLabel: "Управление тарифом",
+  };
+}
+
+const subscription = getSubscription(currentUser.plan, currentUser.subscriptionEndsAt);
+const initials = (currentUser.name?.trim()?.[0] || currentUser.email?.trim()?.[0] || "A").toUpperCase();
+const lastSeenAt = formatDateTime(currentSession?.lastSeenAt ?? new Date().toISOString());
+
+const deviceRows = sessions.slice(0, 3).map((session) => ({
+  name: session.name || "Устройство",
+  os: session.os || "Система не определена",
+  ip: session.ip || "IP не определён",
+  isCurrent: session.token === currentSession?.token,
+  seen: formatDateTime(session.lastSeenAt),
+}));
+import MotionBackground from "../components/MotionBackground.astro";
+---
+
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Astra • Кабинет</title>
+    <meta name="description" content="Личный кабинет Astra: профиль, тариф и устройства." />
+    <script is:inline>document.documentElement.classList.add("js");</script>
+  </head>
+
+  <body>
+    <MotionBackground />
+    <div class="route-loader" aria-hidden="true"></div>
+
+    <div class="page-shell page-transition page-ready">
+      <div class="bg-glow glow-left"></div>
+      <div class="bg-glow glow-right"></div>
+
+      <AccountTopBar current="account" isAdmin={isAdmin} showLogout={true} />
+
+      <main class="page">
+        <section class="account-hero">
+          <article class="panel" data-reveal="left" style="--delay: 70ms; --dur: 620ms;">
+            <div class="panel-inner account-identity">
+              <div class="identity-top">
+                <div class="avatar">{initials}</div>
+
+                <div class="identity-copy">
+                  <p class="eyebrow">личный кабинет</p>
+                  <h1 class="title-xl">Управление аккаунтом</h1>
+                  <p class="muted hero-subtle">Профиль, тариф, активные сессии и последние действия аккаунта.</p>
+
+                  <div class="hero-pills hero-pills--compact">
+                    <span class="pill">Кабинет</span>
+                    <span class="pill">Тариф</span>
+                    <span class="pill">Клиент</span>
+                  </div>
+
+                  <div class="identity-meta">
+                    <strong>{currentUser.name || "Пользователь"}</strong>
+                    <span>{currentUser.email}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="identity-stats">
+                <div class="summary-card">
+                  <span>Последний вход</span>
+                  <strong>{lastSeenAt}</strong>
+                </div>
+                <div class="summary-card">
+                  <span>Активные сессии</span>
+                  <strong>{devicesCount}</strong>
+                </div>
+                <div class="summary-card">
+                  <span>Статус почты</span>
+                  <strong>{currentUser.emailVerified ? "Подтверждена" : "Не подтверждена"}</strong>
+                </div>
+              </div>
+
+              <div class="hero-actions">
+                <a href="/pricing" class="btn btn-primary">{subscription.key === "active" ? "Управление тарифом" : "Оплатить тариф"}</a>
+                <a href="/account/security" class="btn btn-secondary">Безопасность</a>
+                {isAdmin && <a href="/admin/payments" class="btn btn-secondary">Проверка платежей</a>}
+                <button type="button" class="btn btn-secondary mobile-only-logout" data-open-logout>Выйти</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel" data-reveal="right" style="--delay: 120ms; --dur: 700ms;">
+            <div class="panel-inner subscription-compact">
+              <div class="section-head row">
+                <div>
+                  <p class="eyebrow">текущий тариф</p>
+                  <h2 class="title-lg">{subscription.planLabel}</h2>
+                </div>
+                <span class={`pill ${subscription.key}`}>{subscription.statusLabel}</span>
+              </div>
+
+              <div class="summary-grid compact-grid">
+                <div class="summary-card">
+                  <span>{subscription.heroLabel}</span>
+                  <strong>{subscription.heroValue}</strong>
+                </div>
+                <div class="summary-card">
+                  <span>Действует до</span>
+                  <strong>{subscription.endsAtText}</strong>
+                </div>
+                <div class="summary-card">
+                  <span>Оплата</span>
+                  <strong>{subscription.paymentText}</strong>
+                </div>
+                <div class="summary-card">
+                  <span>Устройства</span>
+                  <strong>{devicesCount}</strong>
+                </div>
+              </div>
+
+              <p class="muted">{subscription.description}</p>
+            </div>
+          </article>
+        </section>
+
+        <section class="account-grid">
+          <article class="panel" data-reveal="up" style="--delay: 170ms; --dur: 720ms;">
+            <div class="panel-inner profile-panel">
+              <div class="section-head">
+                <p class="eyebrow">профиль</p>
+                <h2 class="title-lg">Основная информация</h2>
+              </div>
+
+              <div class="passport-list">
+                <div class="passport-row">
+                  <span>ID профиля</span>
+                  <strong>#{currentUser.id}</strong>
+                </div>
+                <div class="passport-row">
+                  <span>Имя</span>
+                  <strong>{currentUser.name || "Пользователь"}</strong>
+                </div>
+                <div class="passport-row">
+                  <span>Email</span>
+                  <strong>{currentUser.email}</strong>
+                </div>
+                <div class="passport-row">
+                  <span>Статус почты</span>
+                  <strong>{currentUser.emailVerified ? "Подтверждена" : "Не подтверждена"}</strong>
+                </div>
+                <div class="passport-row">
+                  <span>Тариф</span>
+                  <strong>{subscription.planLabel}</strong>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel" data-reveal="up" style="--delay: 220ms; --dur: 780ms;">
+            <div class="panel-inner devices-panel">
+              <div class="section-head row">
+                <div>
+                  <p class="eyebrow">устройства</p>
+                  <h2 class="title-lg">Активные сессии</h2>
+                </div>
+                <span class="pill">{devicesCount} всего</span>
+              </div>
+
+              <div class="devices-strip">
+                <div class="mini-status">
+                  <span>Текущее устройство</span>
+                  <strong>{currentSession?.name || deviceRows[0]?.name || "Устройство"}</strong>
+                </div>
+                <div class="mini-status">
+                  <span>Последняя активность</span>
+                  <strong>{lastSeenAt}</strong>
+                </div>
+              </div>
+
+              <div class="device-list">
+                {deviceRows.map((session, index) => (
+                  <div class="session-item" data-reveal="fade" style={`--delay: ${280 + index * 35}ms; --dur: ${700 + index * 24}ms;`}>
+                    <div class="session-copy">
+                      <strong>{session.name}</strong>
+                      <span>{session.ip}</span>
+                    </div>
+
+                    <div class="session-meta">
+                      <span class={`pill ${session.isCurrent ? "mid" : ""}`}>{session.isCurrent ? "Текущее устройство" : "Недавняя сессия"}</span>
+                      <small>{session.seen}</small>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </article>
+        </section>
+
+
+        <article class="panel" data-reveal="up" style="--delay: 230ms; --dur: 800ms;">
+          <div class="panel-inner">
+            <div class="section-head row">
+              <div>
+                <p class="eyebrow">журнал</p>
+                <h2 class="title-lg">Последние действия</h2>
+              </div>
+              <span class="pill">{recentActions.length} событий</span>
+            </div>
+
+            <div class="device-list">
+              {recentActions.length > 0 ? recentActions.map((item, index) => (
+                <div class="session-item" data-reveal="fade" style={`--delay: ${260 + index * 24}ms; --dur: ${680 + index * 18}ms;`}>
+                  <div class="session-copy">
+                    <strong>{formatActionLabel(item.action)}</strong>
+                    <span>{item.ip ? `IP ${item.ip}` : "Событие аккаунта"}</span>
+                  </div>
+                  <div class="session-meta">
+                    <span class="pill">{formatDateTime(item.createdAt)}</span>
+                  </div>
+                </div>
+              )) : (
+                <div class="empty-state">
+                  <span class="pill">Журнал</span>
+                  <strong>История действий пока пуста</strong>
+                  <span>Здесь будут показываться входы, смена данных и другие действия аккаунта.</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </article>
+
+        <article class="panel download-panel" data-reveal="up" style="--delay: 260ms; --dur: 820ms;">
+          <div class="panel-inner download-inner">
+            <div>
+              <p class="eyebrow">клиент</p>
+              <h2 class="title-lg">Astra для Windows</h2>
+              <p class="muted">Скачай последнюю версию клиента для Windows.</p>
+            </div>
+
+            <div class="assurance-strip">
+              <div class="assurance-card" data-reveal="fade" style="--delay: 290ms; --dur: 720ms;">
+                <strong>Скачать клиент</strong>
+                <span>Загрузка последней версии клиента для Windows.</span>
+              </div>
+              <div class="assurance-card" data-reveal="fade" style="--delay: 330ms; --dur: 740ms;">
+                <strong>Тариф и доступ</strong>
+                <span>Проверь текущий тариф и продли доступ при необходимости.</span>
+              </div>
+              <div class="assurance-card" data-reveal="fade" style="--delay: 370ms; --dur: 760ms;">
+                <strong>Сессии и история</strong>
+                <span>Посмотри активные устройства и последние действия в аккаунте.</span>
+              </div>
+            </div>
+
+            <div class="download-side">
+              <div class="mini-status">
+                <span>Версия</span>
+                <strong>v2.4.1</strong>
+              </div>
+              <div class="mini-status">
+                <span>Платформа</span>
+                <strong>Windows 10 / 11</strong>
+              </div>
+              <a href="/download" class="btn btn-primary">Открыть загрузку</a>
+            </div>
+          </div>
+        </article>
+      </main>
+
+    </div>
+
+    <div class="logout-overlay" data-logout-modal hidden aria-hidden="true">
+      <div class="panel logout-dialog" role="dialog" aria-modal="true" aria-labelledby="logoutModalTitle">
+        <button type="button" class="modal-close" data-close-logout aria-label="Закрыть окно">
+          <span></span>
+          <span></span>
+        </button>
+
+        <div class="dialog-accent dialog-accent-danger" aria-hidden="true"></div>
+
+        <div class="dialog-header">
+          <div class="dialog-icon dialog-icon-danger" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M9 3h6l1 2h4v2H4V5h4l1-2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
+              <path d="M7 9v8a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
+              <path d="M10 11.5v4.5M14 11.5v4.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
+            </svg>
+          </div>
+
+          <div class="dialog-heading">
+            <span class="eyebrow">подтверждение</span>
+            <h3 id="logoutModalTitle">Выйти из аккаунта</h3>
+            <p class="muted">Текущая сессия завершится, после чего откроется страница входа.</p>
+          </div>
+        </div>
+
+        <div class="dialog-note dialog-note-danger">
+          <strong>Что произойдёт</strong>
+          <ul>
+            <li>ты выйдешь из текущего кабинета</li>
+            <li>откроется страница входа</li>
+            <li>данные аккаунта и подписка не изменятся</li>
+          </ul>
+        </div>
+
+        <div class="modal-actions modal-actions-spaced modal-actions-split">
+          <button type="button" class="btn btn-secondary" data-close-logout>Остаться</button>
+          <button type="button" class="btn btn-danger" id="confirmLogoutBtn">Выйти</button>
+        </div>
+      </div>
+    </div>
+
+    <script is:inline>
+      const modal = document.querySelector("[data-logout-modal]");
+      const openButtons = document.querySelectorAll("[data-open-logout]");
+      const closeButtons = document.querySelectorAll("[data-close-logout]");
+      const confirmLogoutBtn = document.getElementById("confirmLogoutBtn");
+      const html = document.documentElement;
+      const transitionMs = 160;
+      const initialLabel = confirmLogoutBtn?.textContent || "Выйти";
+
+      const openLogoutModal = () => {
+        if (!modal) return;
+        modal.hidden = false;
+        modal.setAttribute("aria-hidden", "false");
+        requestAnimationFrame(() => modal.classList.add("is-open"));
+        html.classList.add("modal-lock");
+        document.body.classList.add("modal-lock");
+      };
+
+      const closeLogoutModal = () => {
+        if (!modal) return;
+        modal.classList.remove("is-open");
+        modal.setAttribute("aria-hidden", "true");
+        html.classList.remove("modal-lock");
+        document.body.classList.remove("modal-lock");
+        setTimeout(() => {
+          modal.hidden = true;
+        }, transitionMs);
+      };
+
+      openButtons.forEach((button) => {
+        button.addEventListener("click", openLogoutModal);
+      });
+
+      closeButtons.forEach((button) => {
+        button.addEventListener("click", closeLogoutModal);
+      });
+
+      modal?.addEventListener("click", (event) => {
+        if (event.target === modal) closeLogoutModal();
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && modal && !modal.hidden) {
+          closeLogoutModal();
+        }
+      });
+
+      confirmLogoutBtn?.addEventListener("click", async () => {
+        try {
+          confirmLogoutBtn.disabled = true;
+          confirmLogoutBtn.textContent = "Выходим...";
+
+          const response = await fetch("/api/auth/logout", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+
+          const data = await response.json().catch(() => ({}));
+
+          if (!response.ok || !data.ok) {
+            throw new Error(data.error || "Не удалось выйти");
+          }
+
+          window.location.href = data.redirectTo || "/login";
+        } catch (error) {
+          alert(error.message || "Ошибка выхода");
+          confirmLogoutBtn.disabled = false;
+          confirmLogoutBtn.textContent = initialLabel;
+        }
+      });
+    </script>
+
+    <script is:inline>
+      (() => {
+        const shell = document.querySelector(".page-shell.page-transition");
+        if (!(shell instanceof HTMLElement)) return;
+
+        const makeReady = () => {
+          requestAnimationFrame(() => {
+            shell.classList.add("page-ready");
+            shell.classList.remove("page-leaving");
+            document.querySelector(".route-loader")?.classList.remove("is-active");
+          });
+        };
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", makeReady, { once: true });
+        } else {
+          makeReady();
+        }
+
+        window.addEventListener("pageshow", makeReady);
+
+        document.addEventListener("click", (event) => {
+          const link = event.target instanceof Element ? event.target.closest("a") : null;
+          if (!link) return;
+
+          const href = link.getAttribute("href");
+          if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
+          if (link.hasAttribute("download")) return;
+          if (link.target && link.target !== "_self") return;
+          if (event.defaultPrevented) return;
+          if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+          const url = new URL(link.href, window.location.href);
+          if (url.origin !== window.location.origin) return;
+          if (url.href === window.location.href) return;
+
+          event.preventDefault();
+          shell.classList.remove("page-ready");
+          shell.classList.add("page-leaving");
+          document.querySelector(".route-loader")?.classList.add("is-active");
+
+          window.setTimeout(() => {
+            window.location.href = url.href;
+          }, 110);
+        });
+      })();
+    </script>
+  </body>
+</html>
+
+<style is:inline>
+  .account-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.18fr) minmax(340px, 0.82fr);
+    gap: 16px;
+    align-items: start;
+  }
+
+  .account-identity,
+  .subscription-compact,
+  .profile-panel,
+  .devices-panel {
+    display: grid;
+    gap: 16px;
+    align-content: start;
+  }
+
+  .identity-top {
+    display: grid;
+    grid-template-columns: 84px minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+  }
+
+  .avatar {
+    width: 84px;
+    height: 84px;
+    border-radius: 24px;
+    display: grid;
+    place-items: center;
+    font-size: 1.9rem;
+    font-weight: 800;
+    color: white;
+    background: linear-gradient(135deg, #7b4eff 0%, #9e7bff 100%);
+    box-shadow: 0 16px 40px rgba(141, 99, 255, 0.22);
+  }
+
+  .identity-copy {
+    display: grid;
+    gap: 10px;
+  }
+
+  .identity-copy .section-head {
+    margin: 0;
+  }
+
+  .identity-meta {
+    display: grid;
+    gap: 4px;
+  }
+
+  .identity-meta strong {
+    font-size: 1.12rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .identity-meta span {
+    color: var(--muted);
+  }
+
+  .identity-stats,
+  .summary-grid,
+  .devices-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .compact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summary-card,
+  .mini-status {
+    display: grid;
+    gap: 7px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .summary-card span,
+  .mini-status span,
+  .passport-row span,
+  .session-copy span {
+    color: var(--muted);
+  }
+
+  .summary-card strong,
+  .mini-status strong,
+  .passport-row strong {
+    color: var(--text);
+    display: block;
+  }
+
+  .summary-card span,
+  .mini-status span {
+    display: block;
+  }
+
+  .account-grid {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.84fr) minmax(0, 1.16fr);
+    gap: 16px;
+    align-items: start;
+  }
+
+  .passport-list,
+  .device-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .passport-row,
+  .session-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 16px 18px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .passport-row strong {
+    text-align: right;
+  }
+
+  .session-copy {
+    display: grid;
+    gap: 4px;
+  }
+
+  .session-copy strong {
+    font-size: 1rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+
+  .session-meta {
+    display: grid;
+    gap: 6px;
+    justify-items: end;
+    text-align: right;
+  }
+
+  .session-meta small {
+    color: var(--muted);
+  }
+
+  .download-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+    gap: 18px;
+    align-items: center;
+  }
+
+  .download-side {
+    display: grid;
+    gap: 10px;
+  }
+
+  .modal-actions-spaced {
+    margin-top: 22px;
+    padding-top: 0;
+    align-items: center;
+  }
+
+  .modal-actions-split {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(245, 247, 255, 0.9);
+    transition:
+      transform 160ms ease,
+      border-color 160ms ease,
+      background 160ms ease,
+      box-shadow 160ms ease;
+  }
+
+  .modal-close:hover {
+    transform: translateY(-1px);
+    border-color: rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.07);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
+  }
+
+  .modal-close span {
+    position: absolute;
+    width: 16px;
+    height: 1.7px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+
+  .modal-close span:first-child {
+    transform: rotate(45deg);
+  }
+
+  .modal-close span:last-child {
+    transform: rotate(-45deg);
+  }
+
+  .dialog-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+  }
+
+  .dialog-heading {
+    display: grid;
+    gap: 8px;
+  }
+
+  .dialog-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .dialog-icon svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .dialog-icon-danger {
+    color: #ff8aa8;
+    background: linear-gradient(180deg, rgba(255, 132, 167, 0.2), rgba(255, 108, 142, 0.08));
+    border-color: rgba(255, 132, 167, 0.22);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 16px 36px rgba(255, 98, 143, 0.14);
+  }
+
+  .dialog-note {
+    position: relative;
+    margin-top: 18px;
+    padding: 16px 18px;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.025));
+  }
+
+  .dialog-note strong {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 0.95rem;
+    letter-spacing: -0.02em;
+  }
+
+  .dialog-note ul {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 8px;
+    color: rgba(229, 232, 245, 0.8);
+    line-height: 1.45;
+  }
+
+  .dialog-note-danger {
+    border-color: rgba(255, 132, 167, 0.18);
+    background: linear-gradient(180deg, rgba(255, 119, 155, 0.1), rgba(255, 255, 255, 0.03));
+  }
+
+  .dialog-accent {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 180px;
+    height: 180px;
+    border-radius: 999px;
+    filter: blur(18px);
+    opacity: 0.36;
+    pointer-events: none;
+  }
+
+  .dialog-accent-danger {
+    top: -56px;
+    left: -32px;
+    background: radial-gradient(circle, rgba(255, 109, 150, 0.44), rgba(255, 109, 150, 0));
+  }
+
+  html.modal-lock,
+  body.modal-lock {
+    overflow: hidden;
+  }
+
+  .logout-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 140;
+    display: grid;
+    place-items: center;
+    padding: max(24px, env(safe-area-inset-top, 0px) + 8px) 20px max(24px, env(safe-area-inset-bottom, 0px) + 8px);
+    background: rgba(2, 4, 10, 0.78);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    opacity: 0;
+    pointer-events: none;
+    overflow: hidden;
+    overscroll-behavior: contain;
+    transition: opacity 160ms ease;
+  }
+
+  .logout-overlay.is-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .logout-dialog {
+    position: relative;
+    width: min(100%, 498px);
+    margin: 0;
+    padding: 28px;
+    background:
+      radial-gradient(circle at top left, rgba(255, 120, 162, 0.16), transparent 34%),
+      linear-gradient(180deg, rgba(14, 17, 30, 0.985), rgba(8, 10, 20, 0.975));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 28px;
+    box-shadow:
+      0 28px 90px rgba(0, 0, 0, 0.52),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transform: translate3d(0, 12px, 0) scale(0.985);
+    transition: transform 160ms ease, box-shadow 160ms ease;
+    max-height: none;
+    overflow: clip;
+  }
+
+  .logout-overlay.is-open .logout-dialog {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  .logout-dialog h3 {
+    font-size: clamp(1.45rem, 4vw, 1.9rem);
+    margin: 0;
+  }
+
+  .logout-dialog .eyebrow {
+    margin: 0;
+    color: rgba(204, 171, 255, 0.9);
+  }
+
+  .logout-dialog .muted {
+    font-size: 0.99rem;
+    color: rgba(229, 232, 245, 0.78);
+    max-width: 34ch;
+  }
+
+  .logout-dialog .btn {
+    min-height: 52px;
+    border-radius: 17px;
+  }
+
+  @media (max-width: 1120px) {
+    .account-hero,
+    .account-grid,
+    .download-inner {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  
+  .mobile-only-logout {
+    display: none;
+  }
+
+  @media (max-width: 720px) {
+    .mobile-only-logout {
+      display: inline-flex;
+    }
+
+    .header-actions {
+      width: auto;
+      justify-self: end;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .logout-overlay {
+      padding: max(18px, env(safe-area-inset-top, 0px) + 6px) 14px max(18px, env(safe-area-inset-bottom, 0px) + 6px);
+    }
+
+    .logout-dialog {
+      width: min(100%, 420px);
+      padding: 22px 18px 18px;
+      border-radius: 24px;
+    }
+
+    .dialog-header {
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    .dialog-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+    }
+
+    .modal-actions-split {
+      grid-template-columns: 1fr;
+    }
+
+    .modal-close {
+      top: 14px;
+      right: 14px;
+      width: 40px;
+      height: 40px;
+    }
+
+    .identity-top,
+    .identity-stats,
+    .summary-grid,
+    .compact-grid,
+    .devices-strip {
+      grid-template-columns: 1fr;
+    }
+
+    .passport-row,
+    .session-item {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .passport-row strong,
+    .session-meta {
+      text-align: left;
+      justify-items: start;
+    }
+  }
+</style>

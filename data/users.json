@@ -1,0 +1,21 @@
+[
+  {
+    "id": "123",
+    "name": "Сёма",
+    "email": "qwertty111d@gmail.com",
+    "emailVerified": true,
+    "pendingEmail": "eyescryedits@gmail.com",
+    "pendingEmailVerificationToken": "8bf4fa1849804177a1622aff7417c99c1f180992b3fb43141ba712ebcebaf280",
+    "passwordHash": "scrypt$abb2ded1f5fd00b1ebc9bd57782ec03e$ef079c80b3853ccc9d52f1e0c1e64eeca9004e7fb9222791f2a8abd6ff860c3e1ed8f4984eedf18308c6786f5f0818d7faeb3716685843b91829327e028ec87a",
+    "twoFactorEnabled": false,
+    "twoFactorSecret": null,
+    "pendingTwoFactorSecret": null,
+    "plan": null,
+    "subscriptionEndsAt": null,
+    "createdAt": "2026-04-01T12:00:00.000Z",
+    "updatedAt": "2026-04-01T18:15:26.250Z",
+    "passwordResetToken": null,
+    "passwordResetExpiresAt": null,
+    "pendingEmailVerificationExpiresAt": "2026-04-01T19:15:05.772Z"
+  }
+]

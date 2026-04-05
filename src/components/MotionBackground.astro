@@ -1,0 +1,680 @@
+---
+export interface Props {
+  opacity?: number;
+  blur?: boolean;
+}
+
+const { opacity = 1, blur = false } = Astro.props;
+---
+
+<div class:list={["motion-bg", blur && "is-blurred"]} aria-hidden="true" style={`--bg-opacity:${opacity};`}>
+  <canvas class="motion-bg__network"></canvas>
+  <div class="motion-bg__grid"></div>
+  <div class="motion-bg__aurora motion-bg__aurora--left"></div>
+  <div class="motion-bg__aurora motion-bg__aurora--right"></div>
+  <div class="motion-bg__ring motion-bg__ring--left"></div>
+  <div class="motion-bg__ring motion-bg__ring--right"></div>
+  <div class="motion-bg__orb motion-bg__orb--mid"></div>
+  <div class="motion-bg__orb motion-bg__orb--bottom"></div>
+  <div class="motion-bg__grain"></div>
+  <div class="motion-bg__scan"></div>
+  <div class="motion-bg__vignette"></div>
+</div>
+
+<script is:inline>
+  (() => {
+    const script = document.currentScript;
+    const root = script && script.previousElementSibling;
+    if (!(root instanceof HTMLElement)) return;
+
+    const canvas = root.querySelector('.motion-bg__network');
+    if (!(canvas instanceof HTMLCanvasElement) || canvas.dataset.ready === '1') return;
+    canvas.dataset.ready = '1';
+
+    const ctx = canvas.getContext('2d', { alpha: true });
+    if (!ctx) return;
+
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const pointerFine = window.matchMedia('(pointer:fine)').matches;
+
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+    let rafId = 0;
+    let lastTime = 0;
+    let points = [];
+    let pulses = [];
+    let edges = [];
+    let connectionDistance = 180;
+    let maxLinks = 4;
+    let pointer = { x: 0, y: 0, active: false, radius: 190 };
+
+    function random(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function buildPoints() {
+      const isMobile = width < 768;
+      const count = isMobile ? 38 : 66;
+      connectionDistance = isMobile ? 132 : 184;
+      maxLinks = isMobile ? 3 : 4;
+      pointer.radius = isMobile ? 120 : 190;
+
+      points = Array.from({ length: count }, (_, index) => {
+        const edgeBias = index < count * 0.16;
+        const x = edgeBias ? random(-width * 0.08, width * 1.08) : random(0, width);
+        const y = edgeBias ? random(-height * 0.08, height * 1.08) : random(0, height);
+        return {
+          x,
+          y,
+          vx: random(-0.022, 0.022),
+          vy: random(-0.022, 0.022),
+          radius: random(isMobile ? 1.2 : 1.35, isMobile ? 2.6 : 3.4),
+          glow: random(0.45, 1),
+          twinkle: random(0, Math.PI * 2),
+          twinkleSpeed: random(0.004, 0.013),
+          depth: random(0.7, 1.3),
+          anchor: Math.random() > 0.78,
+        };
+      });
+
+      pulses = Array.from({ length: isMobile ? 4 : 8 }, () => ({
+        edgeKey: '',
+        progress: Math.random(),
+        speed: random(0.14, 0.32),
+        active: true,
+      }));
+
+      rebuildEdges();
+      rebindPulses();
+    }
+
+    function rebuildEdges() {
+      const nextEdges = [];
+      const edgeMap = new Set();
+
+      for (let i = 0; i < points.length; i += 1) {
+        const source = points[i];
+        const neighbors = [];
+
+        for (let j = 0; j < points.length; j += 1) {
+          if (i === j) continue;
+          const target = points[j];
+          const dx = source.x - target.x;
+          const dy = source.y - target.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist > connectionDistance) continue;
+          neighbors.push({ index: j, dist });
+        }
+
+        neighbors.sort((a, b) => a.dist - b.dist);
+        const limit = Math.min(maxLinks, neighbors.length);
+
+        for (let n = 0; n < limit; n += 1) {
+          const targetIndex = neighbors[n].index;
+          const minIndex = Math.min(i, targetIndex);
+          const maxIndex = Math.max(i, targetIndex);
+          const key = `${minIndex}:${maxIndex}`;
+          if (edgeMap.has(key)) continue;
+          edgeMap.add(key);
+          nextEdges.push({
+            key,
+            aIndex: minIndex,
+            bIndex: maxIndex,
+            distance: neighbors[n].dist,
+          });
+        }
+      }
+
+      edges = nextEdges;
+    }
+
+    function rebindPulses() {
+      if (!edges.length) return;
+      for (const pulse of pulses) {
+        if (pulse.edgeKey && edges.some((edge) => edge.key === pulse.edgeKey)) continue;
+        pulse.edgeKey = edges[Math.floor(Math.random() * edges.length)].key;
+      }
+    }
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      buildPoints();
+      draw(performance.now(), true);
+    }
+
+    function updatePoints(delta) {
+      const dt = clamp(delta / 16.666, 0.65, 1.65);
+
+      for (const point of points) {
+        point.x += point.vx * dt * 28 * point.depth;
+        point.y += point.vy * dt * 28 * point.depth;
+        point.twinkle += point.twinkleSpeed * dt * 3.2;
+
+        if (point.x < -36 || point.x > width + 36) point.vx *= -1;
+        if (point.y < -36 || point.y > height + 36) point.vy *= -1;
+
+        if (pointer.active && pointerFine) {
+          const dx = pointer.x - point.x;
+          const dy = pointer.y - point.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < pointer.radius && dist > 0.001) {
+            const force = (1 - dist / pointer.radius) * 0.012;
+            point.x -= (dx / dist) * force * 26;
+            point.y -= (dy / dist) * force * 26;
+          }
+        }
+
+        point.x = clamp(point.x, -42, width + 42);
+        point.y = clamp(point.y, -42, height + 42);
+      }
+
+      rebuildEdges();
+      rebindPulses();
+    }
+
+    function drawBackdrop(time) {
+      const wash = ctx.createRadialGradient(width * 0.5, height * 0.14, 0, width * 0.5, height * 0.14, width * 0.78);
+      wash.addColorStop(0, 'rgba(123, 98, 255, 0.08)');
+      wash.addColorStop(0.42, 'rgba(68, 110, 255, 0.035)');
+      wash.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = wash;
+      ctx.fillRect(0, 0, width, height);
+
+      const haze = ctx.createLinearGradient(0, 0, 0, height);
+      haze.addColorStop(0, 'rgba(255,255,255,0.015)');
+      haze.addColorStop(0.55, 'rgba(255,255,255,0)');
+      haze.addColorStop(1, 'rgba(0,0,0,0.14)');
+      ctx.fillStyle = haze;
+      ctx.fillRect(0, 0, width, height);
+
+      const pulse = (Math.sin(time * 0.00042) + 1) * 0.5;
+      ctx.fillStyle = `rgba(255,255,255,${0.008 + pulse * 0.006})`;
+      ctx.fillRect(0, 0, width, height);
+    }
+
+    function drawEdges(time) {
+      for (const edge of edges) {
+        const a = points[edge.aIndex];
+        const b = points[edge.bIndex];
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > connectionDistance) continue;
+
+        const closeness = 1 - dist / connectionDistance;
+        const twinkle = (Math.sin(time * 0.0014 + edge.aIndex * 1.7 + edge.bIndex) + 1) * 0.5;
+        const pointerBoost = pointer.active
+          ? Math.max(
+              0,
+              1 - Math.min(
+                Math.hypot(pointer.x - (a.x + b.x) * 0.5, pointer.y - (a.y + b.y) * 0.5),
+                pointer.radius * 1.15,
+              ) / (pointer.radius * 1.15),
+            )
+          : 0;
+        const alpha = 0.045 + closeness * 0.24 + twinkle * 0.06 + pointerBoost * 0.12;
+
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.lineWidth = 0.48 + closeness * 0.86 + pointerBoost * 0.35;
+        ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+        ctx.shadowBlur = 8 + closeness * 18 + pointerBoost * 12;
+        ctx.shadowColor = 'rgba(255,255,255,0.18)';
+        ctx.stroke();
+      }
+    }
+
+    function drawPulses(delta) {
+      if (!edges.length) return;
+
+      for (const pulse of pulses) {
+        const edge = edges.find((item) => item.key === pulse.edgeKey) || edges[Math.floor(Math.random() * edges.length)];
+        if (!edge) continue;
+        pulse.edgeKey = edge.key;
+        pulse.progress += (pulse.speed * delta) / 1000;
+
+        if (pulse.progress >= 1) {
+          pulse.progress = 0;
+          pulse.speed = random(0.14, 0.34);
+          pulse.edgeKey = edges[Math.floor(Math.random() * edges.length)].key;
+        }
+
+        const a = points[edge.aIndex];
+        const b = points[edge.bIndex];
+        const x = a.x + (b.x - a.x) * pulse.progress;
+        const y = a.y + (b.y - a.y) * pulse.progress;
+
+        ctx.beginPath();
+        ctx.arc(x, y, 1.15, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.shadowBlur = 16;
+        ctx.shadowColor = 'rgba(255,255,255,0.75)';
+        ctx.fill();
+      }
+    }
+
+    function drawNodes(time) {
+      for (let i = 0; i < points.length; i += 1) {
+        const point = points[i];
+        const pulse = (Math.sin(point.twinkle) + 1) * 0.5;
+        const pointerBoost = pointer.active
+          ? Math.max(0, 1 - Math.min(Math.hypot(pointer.x - point.x, pointer.y - point.y), pointer.radius) / pointer.radius)
+          : 0;
+        const radius = point.radius + pulse * 0.9 + pointerBoost * 0.9 + (point.anchor ? 0.45 : 0);
+        const alpha = 0.38 + pulse * 0.26 + pointerBoost * 0.18 + (point.anchor ? 0.12 : 0);
+
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, radius * 1.65, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${0.035 + pulse * 0.022 + pointerBoost * 0.03})`;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+        ctx.shadowBlur = 10 + pulse * 12 + pointerBoost * 14;
+        ctx.shadowColor = 'rgba(255,255,255,0.55)';
+        ctx.fill();
+      }
+    }
+
+    function draw(time, stillFrame) {
+      const delta = lastTime ? time - lastTime : 16.666;
+      lastTime = time;
+
+      ctx.clearRect(0, 0, width, height);
+      drawBackdrop(time);
+
+      if (!stillFrame) {
+        updatePoints(delta);
+      }
+
+      const driftX = Math.sin(time * 0.00007) * 12;
+      const driftY = Math.cos(time * 0.00005) * 10;
+      ctx.save();
+      ctx.translate(driftX, driftY);
+      drawEdges(time);
+      drawPulses(delta);
+      drawNodes(time);
+      ctx.restore();
+    }
+
+    function animate(time) {
+      draw(time, false);
+      if (!prefersReduced.matches && !document.hidden) {
+        rafId = window.requestAnimationFrame(animate);
+      } else {
+        rafId = 0;
+      }
+    }
+
+    function start() {
+      if (rafId || prefersReduced.matches) {
+        draw(performance.now(), true);
+        return;
+      }
+      rafId = window.requestAnimationFrame(animate);
+    }
+
+    function stop() {
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+      draw(performance.now(), true);
+    }
+
+    function handlePointerMove(event) {
+      pointer.x = event.clientX;
+      pointer.y = event.clientY;
+      pointer.active = true;
+    }
+
+    function handlePointerLeave() {
+      pointer.active = false;
+    }
+
+    resize();
+    start();
+
+    window.addEventListener('resize', resize, { passive: true });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) stop();
+      else start();
+    });
+    prefersReduced.addEventListener('change', () => {
+      if (prefersReduced.matches) stop();
+      else start();
+    });
+
+    if (pointerFine) {
+      window.addEventListener('pointermove', handlePointerMove, { passive: true });
+      window.addEventListener('pointerleave', handlePointerLeave, { passive: true });
+      window.addEventListener('blur', handlePointerLeave, { passive: true });
+    }
+  })();
+</script>
+
+<style>
+  .motion-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+    opacity: var(--bg-opacity, 1);
+    background:
+      radial-gradient(circle at 14% 18%, rgba(78, 120, 255, 0.085), transparent 24%),
+      radial-gradient(circle at 86% 14%, rgba(171, 124, 255, 0.075), transparent 22%),
+      linear-gradient(180deg, #010206 0%, #02030a 42%, #010205 100%);
+  }
+
+  .motion-bg::before,
+  .motion-bg::after {
+    content: "";
+    position: absolute;
+    inset: -16%;
+    pointer-events: none;
+  }
+
+  .motion-bg::before {
+    background:
+      radial-gradient(circle at 48% 40%, rgba(109, 90, 255, 0.032), transparent 34%);
+    opacity: 0.42;
+    mix-blend-mode: screen;
+    animation: motion-bg-breathe 18s ease-in-out infinite;
+  }
+
+  .motion-bg::after {
+    background: linear-gradient(180deg, rgba(255,255,255,0.015), transparent 26%, transparent 72%, rgba(255,255,255,0.01));
+    opacity: 0.58;
+  }
+
+  .motion-bg.is-blurred {
+    filter: blur(8px);
+    transform: scale(1.03);
+  }
+
+  .motion-bg__network,
+  .motion-bg__grid,
+  .motion-bg__aurora,
+  .motion-bg__ring,
+  .motion-bg__orb,
+  .motion-bg__grain,
+  .motion-bg__scan,
+  .motion-bg__vignette {
+    position: absolute;
+    inset: 0;
+  }
+
+  .motion-bg__network {
+    width: 100%;
+    height: 100%;
+    opacity: 0.98;
+    mix-blend-mode: screen;
+    filter: contrast(1.05) brightness(1.06);
+  }
+
+  .motion-bg__grid {
+    inset: -12% -8%;
+    background-image:
+      linear-gradient(rgba(162, 149, 255, 0.055) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(162, 149, 255, 0.055) 1px, transparent 1px);
+    background-size: 112px 112px;
+    mask-image: radial-gradient(circle at 50% 44%, rgba(0, 0, 0, 0.72), transparent 88%);
+    opacity: 0.18;
+    transform: perspective(1100px) rotateX(73deg) translateY(-6vh) scale(1.6);
+    transform-origin: center top;
+    animation: motion-bg-grid-drift 18s linear infinite;
+  }
+
+  .motion-bg__aurora,
+  .motion-bg__orb {
+    border-radius: 999px;
+    mix-blend-mode: screen;
+  }
+
+  .motion-bg__aurora {
+    filter: blur(82px);
+    opacity: 0.9;
+  }
+
+  .motion-bg__aurora--left {
+    width: 34vw;
+    min-width: 260px;
+    height: 34vw;
+    min-height: 260px;
+    left: -10vw;
+    top: 12%;
+    background: radial-gradient(circle, rgba(76, 116, 255, 0.18), rgba(76, 116, 255, 0.03) 58%, transparent 74%);
+    opacity: 0.72;
+    animation: motion-bg-float-left 24s ease-in-out infinite;
+  }
+
+  .motion-bg__aurora--right {
+    width: 32vw;
+    min-width: 240px;
+    height: 32vw;
+    min-height: 240px;
+    right: -8vw;
+    top: 10%;
+    background: radial-gradient(circle, rgba(157, 103, 255, 0.16), rgba(157, 103, 255, 0.025) 58%, transparent 74%);
+    opacity: 0.6;
+    animation: motion-bg-float-right 22s ease-in-out infinite;
+  }
+
+  .motion-bg__ring {
+    position: absolute;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow:
+      inset 1px 1px 0 rgba(255,255,255,0.08),
+      0 0 0 1px rgba(112, 94, 255, 0.045),
+      0 40px 80px rgba(0,0,0,0.24);
+    background:
+      radial-gradient(circle at 22% 18%, rgba(255,255,255,0.12), rgba(255,255,255,0.025) 20%, transparent 42%),
+      linear-gradient(145deg, rgba(255,255,255,0.045), rgba(255,255,255,0.014) 26%, rgba(0,0,0,0.08) 100%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .motion-bg__ring::after {
+    content: "";
+    position: absolute;
+    inset: 1.6%;
+    border-radius: inherit;
+    border: 1px solid rgba(255,255,255,0.038);
+    mask-image: linear-gradient(to bottom right, rgba(0,0,0,1), transparent 78%);
+    -webkit-mask-image: linear-gradient(to bottom right, rgba(0,0,0,1), transparent 78%);
+  }
+
+  .motion-bg__ring--left {
+    width: 46vw;
+    height: 46vw;
+    min-width: 460px;
+    min-height: 460px;
+    left: -18vw;
+    bottom: -22vw;
+    opacity: 0.6;
+    animation: motion-bg-ring-left 24s ease-in-out infinite;
+  }
+
+  .motion-bg__ring--right {
+    width: 30vw;
+    height: 30vw;
+    min-width: 300px;
+    min-height: 300px;
+    right: -10vw;
+    top: -8vw;
+    opacity: 0.28;
+    animation: motion-bg-ring-right 20s ease-in-out infinite;
+  }
+
+  .motion-bg__orb {
+    filter: blur(68px);
+  }
+
+  .motion-bg__orb--mid {
+    width: 22rem;
+    height: 22rem;
+    left: 50%;
+    top: 16%;
+    transform: translateX(-50%);
+    background: radial-gradient(circle, rgba(158, 114, 255, 0.13), rgba(158, 114, 255, 0.02) 58%, transparent 76%);
+    animation: motion-bg-orb-mid 18s ease-in-out infinite;
+  }
+
+  .motion-bg__orb--bottom {
+    width: 20rem;
+    height: 20rem;
+    right: 10%;
+    bottom: 14%;
+    background: radial-gradient(circle, rgba(88, 122, 255, 0.12), rgba(88, 122, 255, 0.018) 58%, transparent 76%);
+    animation: motion-bg-orb-bottom 20s ease-in-out infinite;
+  }
+
+  .motion-bg__grain {
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(255,255,255,0.12) 0 0.8px, transparent 1px),
+      radial-gradient(circle at 74% 34%, rgba(255,255,255,0.08) 0 0.9px, transparent 1.1px),
+      radial-gradient(circle at 58% 70%, rgba(255,255,255,0.08) 0 0.8px, transparent 1px),
+      radial-gradient(circle at 36% 62%, rgba(255,255,255,0.06) 0 0.8px, transparent 1px),
+      radial-gradient(circle at 88% 54%, rgba(255,255,255,0.05) 0 0.8px, transparent 1px),
+      radial-gradient(circle at 10% 82%, rgba(255,255,255,0.05) 0 0.8px, transparent 1px);
+    opacity: 0.28;
+    animation: motion-bg-grain 12s linear infinite;
+  }
+
+  .motion-bg__scan {
+    inset: -20% 0;
+    background: repeating-linear-gradient(180deg, rgba(255,255,255,0.028) 0 1px, transparent 1px 11px);
+    mix-blend-mode: screen;
+    opacity: 0.06;
+    animation: motion-bg-scan 18s linear infinite;
+  }
+
+  .motion-bg__vignette {
+    background:
+      radial-gradient(circle at center, transparent 42%, rgba(1,2,7,0.18) 70%, rgba(1,2,7,0.72) 100%),
+      linear-gradient(180deg, rgba(1,2,7,0.02), rgba(1,2,7,0.12) 28%, rgba(1,2,7,0.42) 100%);
+  }
+
+  @keyframes motion-bg-breathe {
+    0%, 100% { opacity: 0.62; transform: scale(1); }
+    50% { opacity: 0.96; transform: scale(1.03); }
+  }
+
+  @keyframes motion-bg-grid-drift {
+    from { transform: perspective(1100px) rotateX(73deg) translateY(-6vh) translateX(0) scale(1.6); }
+    to { transform: perspective(1100px) rotateX(73deg) translateY(-6vh) translateX(42px) scale(1.6); }
+  }
+
+  @keyframes motion-bg-float-left {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    50% { transform: translate3d(16px, -14px, 0); }
+  }
+
+  @keyframes motion-bg-float-right {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    50% { transform: translate3d(-18px, 14px, 0); }
+  }
+
+  @keyframes motion-bg-ring-left {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    50% { transform: translate3d(18px, -10px, 0); }
+  }
+
+  @keyframes motion-bg-ring-right {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    50% { transform: translate3d(-14px, 12px, 0); }
+  }
+
+  @keyframes motion-bg-orb-mid {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-48%) translateY(10px); }
+  }
+
+  @keyframes motion-bg-orb-bottom {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    50% { transform: translate3d(-12px, 14px, 0); }
+  }
+
+  @keyframes motion-bg-grain {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(0, -10px, 0); }
+  }
+
+  @keyframes motion-bg-scan {
+    0% { transform: translateY(-2%); }
+    50% { transform: translateY(2%); }
+    100% { transform: translateY(-2%); }
+  }
+
+  @media (max-width: 900px) {
+    .motion-bg__network {
+      opacity: 0.94;
+    }
+
+    .motion-bg__grid {
+      background-size: 82px 82px;
+      opacity: 0.13;
+    }
+
+    .motion-bg__ring--left {
+      width: 70vw;
+      height: 70vw;
+      min-width: 340px;
+      min-height: 340px;
+      left: -36vw;
+      bottom: -18vw;
+      opacity: 0.5;
+    }
+
+    .motion-bg__ring--right {
+      width: 42vw;
+      height: 42vw;
+      min-width: 220px;
+      min-height: 220px;
+      right: -18vw;
+      top: -12vw;
+      opacity: 0.2;
+    }
+
+    .motion-bg__orb--mid {
+      width: 14rem;
+      height: 14rem;
+      top: 20%;
+    }
+
+    .motion-bg__orb--bottom {
+      width: 14rem;
+      height: 14rem;
+      right: -2rem;
+      bottom: 16%;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .motion-bg::before,
+    .motion-bg__grid,
+    .motion-bg__aurora,
+    .motion-bg__ring,
+    .motion-bg__orb,
+    .motion-bg__grain,
+    .motion-bg__scan {
+      animation: none !important;
+    }
+  }
+</style>

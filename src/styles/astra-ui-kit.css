@@ -1,0 +1,49 @@
+.ui-empty-state {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02));
+}
+.ui-empty-icon {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: #cbb7ff;
+  background: rgba(141,99,255,.12);
+  border: 1px solid rgba(141,99,255,.16);
+}
+.ui-empty-copy {
+  display: grid;
+  gap: 3px;
+}
+.ui-empty-copy strong {
+  font-size: 1rem;
+  line-height: 1.2;
+  color: #f6f7fd;
+}
+.ui-empty-copy span {
+  color: #97a1b4;
+  line-height: 1.45;
+}
+.ui-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255,255,255,.05);
+}
+.ui-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.11), transparent);
+  animation: uiSkeletonMove 1.15s ease infinite;
+}
+@keyframes uiSkeletonMove {
+  100% { transform: translateX(100%); }
+}

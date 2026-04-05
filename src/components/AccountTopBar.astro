@@ -1,0 +1,42 @@
+---
+interface Props {
+  current: "account" | "pricing" | "security" | "payments" | "client" | "checkout";
+  isAdmin?: boolean;
+  showClient?: boolean;
+  showLogout?: boolean;
+  actionHref?: string;
+  actionLabel?: string;
+}
+
+const {
+  current,
+  isAdmin = false,
+  showClient = true,
+  showLogout = false,
+  actionHref = "/account",
+  actionLabel = "В кабинет",
+} = Astro.props;
+---
+
+<header class="site-header" data-reveal="fade" style="--delay: 30ms; --dur: 520ms;">
+  <a href="/" class="brand">
+    <img src="/astra-logo.svg" alt="" class="brand-cat" />
+    <span>astra</span>
+  </a>
+
+  <nav class="top-nav">
+    <a class:list={{ "top-link": true, active: current === "account" }} href="/account">Кабинет</a>
+    <a class:list={{ "top-link": true, active: current === "pricing" || current === "checkout" }} href="/pricing">Тариф</a>
+    <a class:list={{ "top-link": true, active: current === "security" }} href="/account/security">Безопасность</a>
+    {isAdmin && <a class:list={{ "top-link": true, active: current === "payments" }} href="/admin/payments">Платежи</a>}
+    {showClient && <a class:list={{ "top-link": true, active: current === "client" }} href="/download">Клиент</a>}
+  </nav>
+
+  <div class="header-actions">
+    {showLogout ? (
+      <button type="button" class="header-btn header-btn-secondary" data-open-logout>Выйти</button>
+    ) : (
+      <a href={actionHref} class="header-btn header-btn-secondary">{actionLabel}</a>
+    )}
+  </div>
+</header>

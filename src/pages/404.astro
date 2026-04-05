@@ -1,0 +1,627 @@
+---
+import MotionBackground from "../components/MotionBackground.astro";
+---
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>404 — Страница не найдена | Astra</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg-primary: #09090b;
+      --bg-secondary: #111114;
+      --bg-tertiary: #18181b;
+      --bg-card: #141417;
+      --border: #27272a;
+      --border-hover: #3f3f46;
+      --text-primary: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-tertiary: #71717a;
+      --accent: #a78bfa;
+      --accent-dim: #7c3aed;
+      --accent-bg: rgba(167, 139, 250, 0.08);
+      --accent-border: rgba(167, 139, 250, 0.18);
+      --font-body: 'Outfit', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --nav-height: 64px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      font-size: 16px;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: var(--nav-height);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      background: rgba(9, 9, 11, 0.82);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      font-family: var(--font-mono);
+      font-size: 1.05rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+    }
+
+    .nav-logo .dot {
+      width: 8px;
+      height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 12px rgba(167, 139, 250, 0.5);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .nav-link {
+      color: var(--text-secondary);
+      font-size: 0.92rem;
+      transition: color 0.2s ease;
+    }
+
+    .nav-link:hover {
+      color: var(--text-primary);
+    }
+
+    .nav-cta {
+      padding: 0.62rem 1rem;
+      border-radius: 10px;
+      background: var(--accent-dim);
+      color: #fff;
+      font-size: 0.86rem;
+      font-weight: 600;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      box-shadow: 0 8px 24px rgba(124, 58, 237, 0.22);
+    }
+
+    .nav-cta:hover {
+      transform: translateY(-1px);
+      background: var(--accent);
+      box-shadow: 0 12px 30px rgba(124, 58, 237, 0.3);
+    }
+
+    .error-page {
+      position: relative;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem 2rem;
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .error-page::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(167, 139, 250, 0.12) 0%, transparent 28%),
+        radial-gradient(circle at 80% 18%, rgba(124, 58, 237, 0.08) 0%, transparent 24%),
+        radial-gradient(circle at 50% 100%, rgba(167, 139, 250, 0.08) 0%, transparent 30%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .orb {
+      position: absolute;
+      border-radius: 999px;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 28%, rgba(255,255,255,0.005) 55%, rgba(0,0,0,0.14) 100%);
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow:
+        inset 1px 1px 0 rgba(255,255,255,0.18),
+        inset -24px -24px 60px rgba(0,0,0,0.2),
+        0 30px 80px rgba(0,0,0,0.45);
+      opacity: 0.92;
+      will-change: transform;
+    }
+
+    .orb::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background:
+        radial-gradient(circle at 22% 18%, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.08) 18%, transparent 42%),
+        linear-gradient(135deg, rgba(255,255,255,0.16) 0%, transparent 38%);
+      mix-blend-mode: screen;
+      opacity: 0.55;
+    }
+
+    .orb-1 {
+      width: 420px;
+      height: 420px;
+      top: -180px;
+      right: -120px;
+      animation: float1 18s ease-in-out infinite;
+    }
+
+    .orb-2 {
+      width: 340px;
+      height: 340px;
+      bottom: -140px;
+      left: -100px;
+      animation: float2 20s ease-in-out infinite;
+    }
+
+    .orb-3 {
+      width: 180px;
+      height: 180px;
+      top: 20%;
+      left: 12%;
+      opacity: 0.35;
+      animation: float3 16s ease-in-out infinite;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 2;
+    }
+
+    .error-card {
+      max-width: 760px;
+      margin: 0 auto;
+      text-align: center;
+      padding: 3rem 2rem;
+      border-radius: 30px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.015) 100%);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.04),
+        0 20px 50px rgba(0,0,0,0.35),
+        0 0 50px rgba(124, 58, 237, 0.08);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      animation: fadeUp 0.8s ease both;
+    }
+
+    .error-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.42rem 0.95rem;
+      margin-bottom: 1.4rem;
+      border-radius: 999px;
+      border: 1px solid var(--accent-border);
+      background: var(--accent-bg);
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+    }
+
+    .error-badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px rgba(167, 139, 250, 0.6);
+      animation: pulse 2s infinite;
+    }
+
+    .error-code {
+      font-family: var(--font-mono);
+      font-size: clamp(4rem, 12vw, 8rem);
+      font-weight: 700;
+      line-height: 0.95;
+      letter-spacing: -0.06em;
+      margin-bottom: 1rem;
+      background: linear-gradient(90deg, #8b5cf6 0%, #a78bfa 50%, #c4b5fd 100%);
+      background-size: 200% 100%;
+      background-position: 0% 50%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter:
+        drop-shadow(0 0 10px rgba(167, 139, 250, 0.22))
+        drop-shadow(0 0 24px rgba(124, 58, 237, 0.14));
+      animation: gradientFlow 8s ease-in-out infinite;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1.08;
+      letter-spacing: -0.04em;
+      margin-bottom: 1rem;
+    }
+
+    .error-desc {
+      max-width: 600px;
+      margin: 0 auto 2rem;
+      color: var(--text-secondary);
+      font-size: 1.02rem;
+      line-height: 1.75;
+      font-weight: 300;
+    }
+
+    .error-actions {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 2rem;
+    }
+
+    .btn-primary {
+      min-width: 210px;
+      min-height: 58px;
+      padding: 1rem 2rem;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 55%, #a78bfa 100%);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow:
+        0 10px 28px rgba(124, 58, 237, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.16);
+      transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      background: linear-gradient(135deg, #8b5cf6 0%, #9a6bff 55%, #b79cff 100%);
+      box-shadow:
+        0 16px 36px rgba(124, 58, 237, 0.38),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-secondary {
+      min-width: 210px;
+      min-height: 58px;
+      padding: 1rem 2rem;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+      color: var(--text-secondary);
+      font-size: 1rem;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.22s ease, border-color 0.22s ease, color 0.22s ease, background 0.22s ease;
+    }
+
+    .btn-secondary:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+      background: var(--bg-tertiary);
+    }
+
+    .error-tips {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1.25rem;
+    }
+
+    .tip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.78rem 1rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-secondary);
+      font-size: 0.88rem;
+      font-weight: 400;
+      line-height: 1;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.04),
+        0 8px 24px rgba(0,0,0,0.18);
+    }
+
+    .tip::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px rgba(167, 139, 250, 0.5);
+      flex-shrink: 0;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem;
+    }
+
+    .footer-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .footer-logo {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .footer-copy {
+      color: var(--text-tertiary);
+      font-size: 0.82rem;
+    }
+
+    .footer-links {
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      list-style: none;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a {
+      color: var(--text-tertiary);
+      font-size: 0.82rem;
+      transition: color 0.2s ease;
+    }
+
+    .footer-links a:hover {
+      color: var(--text-secondary);
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes gradientFlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    @keyframes float1 {
+      0% { transform: translate3d(0,0,0) rotate(0deg) scale(1); }
+      25% { transform: translate3d(-10px,12px,0) rotate(1deg) scale(1.015); }
+      50% { transform: translate3d(-22px,26px,0) rotate(0deg) scale(0.99); }
+      75% { transform: translate3d(-8px,10px,0) rotate(-1deg) scale(1.01); }
+      100% { transform: translate3d(0,0,0) rotate(0deg) scale(1); }
+    }
+
+    @keyframes float2 {
+      0% { transform: translate3d(0,0,0) rotate(0deg) scale(1); }
+      25% { transform: translate3d(12px,-10px,0) rotate(-1deg) scale(1.01); }
+      50% { transform: translate3d(24px,-20px,0) rotate(0deg) scale(0.985); }
+      75% { transform: translate3d(10px,-8px,0) rotate(1deg) scale(1.01); }
+      100% { transform: translate3d(0,0,0) rotate(0deg) scale(1); }
+    }
+
+    @keyframes float3 {
+      0% { transform: translate3d(0,0,0) scale(1); }
+      25% { transform: translate3d(8px,-10px,0) scale(1.02); }
+      50% { transform: translate3d(18px,-18px,0) scale(0.98); }
+      75% { transform: translate3d(6px,-8px,0) scale(1.01); }
+      100% { transform: translate3d(0,0,0) scale(1); }
+    }
+
+    @media (max-width: 640px) {
+      nav {
+        padding: 0 1rem;
+      }
+
+      .nav-link {
+        display: none;
+      }
+
+      .error-page,
+      footer {
+        padding-left: 1.2rem;
+        padding-right: 1.2rem;
+      }
+
+      .error-card {
+        padding: 2rem 1.2rem;
+        border-radius: 24px;
+      }
+
+      .error-actions {
+        flex-direction: column;
+      }
+
+      .btn-primary,
+      .btn-secondary {
+        width: 100%;
+      }
+
+      .footer-inner {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .orb-1 {
+        width: 280px;
+        height: 280px;
+        top: -110px;
+        right: -90px;
+      }
+
+      .orb-2 {
+        width: 240px;
+        height: 240px;
+        bottom: -100px;
+        left: -70px;
+      }
+
+      .orb-3 {
+        width: 120px;
+        height: 120px;
+        left: 4%;
+        top: 14%;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .orb,
+      .error-badge::before,
+      .error-code,
+      .error-card {
+        animation: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+    <MotionBackground />
+  <nav>
+    <a href="/" class="nav-logo">
+      <span class="dot"></span>
+      astra
+    </a>
+
+    <div class="nav-actions">
+      <a href="/support" class="nav-link">Поддержка</a>
+      <a href="/login" class="nav-cta" id="navAuthBtn">LOG IN</a>
+    </div>
+  </nav>
+
+  <main class="error-page">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <div class="container">
+      <div class="error-card">
+        <div class="error-badge">Navigation Error</div>
+        <div class="error-code">404</div>
+        <h1>Похоже, вы заблудились:(</h1>
+        <p class="error-desc">
+          Возможно, адрес неверный или страница уже уехала в другой сектор сайта.
+          Ничего страшного, сейчас вернём тебя на нормальную орбиту.
+        </p>
+
+        <div class="error-actions">
+          <a href="/" class="btn-primary">НА ГЛАВНУЮ</a>
+          <a href="/support" class="btn-secondary">ОТКРЫТЬ ПОДДЕРЖКУ</a>
+        </div>
+
+        <div class="error-tips">
+          <div class="tip">Проверь ссылку</div>
+          <div class="tip">Вернись на главную</div>
+          <div class="tip">Открой поддержку</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-left">
+        <a href="/" class="footer-logo">
+          <span style="width:6px;height:6px;background:var(--accent);border-radius:50%;display:inline-block;box-shadow:0 0 8px rgba(167,139,250,0.4)"></span>
+          astra
+        </a>
+        <span class="footer-copy">© 2026 Astra. Все права защищены.</span>
+      </div>
+
+      <ul class="footer-links">
+        <li><a href="/privacy">Политика конфиденциальности</a></li>
+        <li><a href="/terms">Условия использования</a></li>
+        <li><a href="/support">Поддержка</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <script>
+  (async () => {
+    const navAuthBtn = document.getElementById('navAuthBtn');
+
+    try {
+      const res = await fetch('/api/auth/session', {
+        credentials: 'same-origin',
+      });
+
+      const data = await res.json();
+
+      if (data?.authenticated && navAuthBtn) {
+        navAuthBtn.textContent = 'КАБИНЕТ';
+        navAuthBtn.setAttribute('href', '/account');
+      }
+    } catch {}
+  })();
+</script>
+</body>
+</html>

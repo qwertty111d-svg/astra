@@ -1,0 +1,1177 @@
+---
+import "../styles/astra-members.css";
+import { isAdminEmail } from "../lib/server/payments.js";
+import AccountTopBar from "../components/AccountTopBar.astro";
+
+const currentUser = Astro.locals.user;
+const isAdmin = currentUser ? isAdminEmail(currentUser.email) : false;
+
+const plans = [
+  {
+    name: "Free",
+    badge: "Старт",
+    tone: "free",
+    desc: "Базовый режим для знакомства с Astra и первых запусков.",
+    price: "0₽",
+    sub: "без подписки",
+    featured: false,
+    buttonLabel: "Скачать",
+    features: [
+      "Базовая оптимизация системы",
+      "Очистка RAM",
+      "Управление автозагрузкой",
+      "Мониторинг системы",
+    ],
+  },
+  {
+    name: "Pro",
+    badge: "Популярный",
+    tone: "pro",
+    desc: "Оптимальный тариф для постоянного использования и полного набора функций.",
+    price: "599₽",
+    sub: "в месяц",
+    featured: true,
+    buttonLabel: "Оплатить",
+    features: [
+      "Всё из Free",
+      "Оптимизация маршрутов",
+      "Игровой режим и FPS Boost",
+      "Оверлей в играх",
+      "Приоритетная поддержка",
+    ],
+  },
+  {
+    name: "Lifetime",
+    badge: "Навсегда",
+    tone: "lifetime",
+    desc: "Одна покупка и доступ ко всем обновлениям без ежемесячной оплаты.",
+    price: "1990₽",
+    sub: "единоразово",
+    featured: false,
+    buttonLabel: "Оплатить",
+    features: [
+      "Всё из Pro",
+      "Пожизненные обновления",
+      "Ранний доступ к beta",
+      "Персональная поддержка",
+      "Перенос лицензии",
+    ],
+  },
+];
+
+const paymentMethods = [
+  {
+    title: "Банковская карта",
+    text: "Оплата банковской картой.",
+    icon: "/payment-icons/card.svg",
+    chips: ["Visa", "Mastercard", "Мир"],
+  },
+  {
+    title: "СБП",
+    text: "Моментальная оплата по QR или через банковское приложение.",
+    icon: "/payment-icons/sbp.png",
+    chips: ["Быстро", "Онлайн"],
+  },
+  {
+    title: "Криптовалюта",
+    text: "Подходит для международной оплаты и альтернативных способов расчёта.",
+    icon: "/payment-icons/bitcoin.png",
+    chips: ["BTC", "USDT"],
+  },
+];
+
+const compareRows = [
+  { label: "Базовая оптимизация", free: "Да", pro: "Да", lifetime: "Да" },
+  { label: "Игровой режим и FPS Boost", free: "—", pro: "Да", lifetime: "Да" },
+  { label: "Приоритетная поддержка", free: "—", pro: "Да", lifetime: "Да" },
+  { label: "Пожизненные обновления", free: "—", pro: "—", lifetime: "Да" },
+];
+import MotionBackground from "../components/MotionBackground.astro";
+---
+
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Astra • Тарифы</title>
+    <meta name="description" content="Тарифы Astra и выбор подходящего режима." />
+    <script is:inline>document.documentElement.classList.add("js");</script>
+  </head>
+
+  <body>
+    <MotionBackground />
+    <div class="route-loader" aria-hidden="true"></div>
+
+    <div class="page-shell page-transition page-ready">
+      <div class="bg-glow glow-left"></div>
+      <div class="bg-glow glow-right"></div>
+      <div class="pricing-orbit pricing-orbit--one" aria-hidden="true"></div>
+      <div class="pricing-orbit pricing-orbit--two" aria-hidden="true"></div>
+
+      <AccountTopBar current="pricing" isAdmin={isAdmin} actionHref="/account" actionLabel="В кабинет" />
+
+      <main class="page">
+        <section class="pricing-hero">
+          <article class="panel" data-reveal="left" style="--delay: 70ms; --dur: 620ms;">
+            <div class="panel-inner pricing-hero-copy">
+              <p class="eyebrow">тарифы</p>
+              <h1 class="title-xl">Выбери режим Astra</h1>
+              <p class="muted hero-copy-text">Выбери тариф и перейди к оплате.</p>
+
+              <div class="hero-pills">
+                <span class="pill">3 тарифа</span>
+                <span class="pill">Условия оплаты</span>
+                <span class="pill">Способы оплаты</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel compare-hero-panel" data-reveal="right" style="--delay: 120ms; --dur: 700ms;">
+            <div class="panel-inner compare-panel compare-panel--hero">
+              <div class="section-head">
+                <p class="eyebrow">сравнение</p>
+                <h2 class="title-lg">Что входит</h2>
+              </div>
+
+              <div class="compare-table">
+                <div class="compare-head">
+                  <span>Функция</span>
+                  <span>Free</span>
+                  <span>Pro</span>
+                  <span>Life</span>
+                </div>
+
+                {compareRows.map((row, index) => (
+                  <div class="compare-row" data-reveal="fade" style={`--delay: ${180 + index * 35}ms; --dur: ${700 + index * 20}ms;`}>
+                    <span>{row.label}</span>
+                    <strong>{row.free}</strong>
+                    <strong>{row.pro}</strong>
+                    <strong>{row.lifetime}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="plans-grid">
+          {plans.map((plan, index) => (
+            <article class={`panel tariff-card ${plan.featured ? "is-featured" : ""}`} data-reveal="up" style={`--delay: ${180 + index * 50}ms; --dur: ${700 + index * 45}ms;`}>
+              <div class="panel-inner tariff-card__inner">
+                <div class="tariff-top">
+                  <span class={`pill ${plan.featured ? "mid" : ""}`}>{plan.badge}</span>
+                  <div>
+                    <h2 class="title-lg">{plan.name}</h2>
+                    <p class="muted">{plan.desc}</p>
+                  </div>
+                </div>
+
+                <div class="tariff-price">
+                  <strong>{plan.price}</strong>
+                  <span class="muted">{plan.sub}</span>
+                </div>
+
+                <div class="feature-list">
+                  {plan.features.map((feature, featureIndex) => (
+                    <div class="feature-row" data-reveal="fade" style={`--delay: ${280 + index * 45 + featureIndex * 18}ms; --dur: ${620 + featureIndex * 18}ms;`}>
+                      <span class="feature-dot"></span>
+                      <span>{feature}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <button class={`btn ${plan.featured ? "btn-primary" : "btn-secondary"}`} type="button" data-plan={plan.name}>
+                  {plan.buttonLabel}
+                </button>
+              </div>
+            </article>
+          ))}
+        </section>
+
+        <section class="assurance-strip" data-reveal="up" style="--delay: 300ms; --dur: 760ms;">
+          <div class="assurance-card">
+            <strong>Моментальная активация</strong>
+            <span>После подтверждения оплаты доступ включается на аккаунте.</span>
+          </div>
+          <div class="assurance-card">
+            <strong>Условия оплаты</strong>
+            <span>Без скрытых шагов и запутанных оговорок. Видно, что входит в тариф и за что ты платишь.</span>
+          </div>
+          <div class="assurance-card">
+            <strong>Спокойная оплата</strong>
+            <span>Доступны оплата картой, СБП и криптой.</span>
+          </div>
+        </section>
+
+        <article class="panel payments-wide" data-reveal="up" style="--delay: 360ms; --dur: 820ms;">
+          <div class="panel-inner payments-panel">
+            <div class="section-head payments-head">
+              <div>
+                <p class="eyebrow">оплата</p>
+                <h2 class="title-lg">Способы оплаты</h2>
+              </div>
+              <p class="muted">Выбери способ оплаты и оформи тариф.</p>
+            </div>
+
+            <div class="payments-wide-grid">
+              {paymentMethods.map((item, index) => (
+                <div class="payment-row payment-row--wide" data-reveal="fade" style={`--delay: ${420 + index * 40}ms; --dur: ${700 + index * 24}ms;`}>
+                  <div class="payment-icon-wrap">
+                    <img src={item.icon} alt="" class="payment-icon" />
+                  </div>
+
+                  <div class="payment-copy">
+                    <strong>{item.title}</strong>
+                    <p class="muted">{item.text}</p>
+                    <div class="payment-chips">
+                      {item.chips.map((chip) => (
+                        <span class="payment-chip">{chip}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </article>
+      </main>
+
+      <footer class="page-footer" data-reveal="fade" style="--delay: 420ms; --dur: 760ms;">
+        <div class="page-footer__inner page-footer__inner--compact">
+          <a href="/" class="page-footer__brand" aria-label="Astra home">
+            <span class="page-footer__brand-dot"></span>
+            astra
+          </a>
+          <p class="page-footer__copy">© 2026 Astra. Все права защищены.</p>
+        </div>
+      </footer>
+    </div>
+
+    <div class="plan-overlay" id="planModal" hidden aria-hidden="true">
+      <div class="panel plan-dialog" role="dialog" aria-modal="true" aria-labelledby="plan-title">
+        <button type="button" class="modal-close" data-close-plan aria-label="Закрыть окно">
+          <span></span>
+          <span></span>
+        </button>
+
+        <div class="dialog-accent dialog-accent-plan" aria-hidden="true"></div>
+
+        <div class="dialog-header">
+          <div class="dialog-icon dialog-icon-plan" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M12 3.75 18.5 7v6.5c0 3.6-2.53 6.91-6.5 7.75-3.97-.84-6.5-4.15-6.5-7.75V7L12 3.75Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
+              <path d="m9.4 12.2 1.72 1.72 3.5-3.94" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </div>
+
+          <div class="dialog-heading">
+            <p class="eyebrow">тариф</p>
+            <h3 id="plan-title">Тариф Pro</h3>
+            <p class="muted" id="planText">Оплати тариф по QR Т-Банка, потом отправь заявку на проверку.</p>
+          </div>
+        </div>
+
+        <div class="plan-summary">
+          <div class="plan-summary-main">
+            <span class="plan-summary-label">Стоимость</span>
+            <strong id="planPrice">599₽</strong>
+            <span class="plan-summary-sub" id="planSub">в месяц</span>
+          </div>
+
+          <div class="plan-summary-meta">
+            <span class="plan-chip" id="planBadge">Популярный</span>
+            <span class="plan-chip plan-chip-soft">Подтверждение после оплаты</span>
+          </div>
+        </div>
+
+        <div class="dialog-note dialog-note-plan">
+          <strong>Как это работает</strong>
+          <ul>
+            <li>переходишь на страницу оплаты выбранного тарифа</li>
+            <li>после оплаты отправляешь заявку на проверку</li>
+            <li>после подтверждения доступ активируется на аккаунте</li>
+          </ul>
+        </div>
+
+        <div class="modal-actions modal-actions-spaced modal-actions-split">
+          <button class="btn btn-secondary" type="button" data-close-plan>Позже</button>
+          <a href="/checkout?plan=pro" class="btn btn-primary">Перейти к оплате</a>
+        </div>
+      </div>
+    </div>
+
+    <script is:inline>
+      const body = document.body;
+      const html = document.documentElement;
+      const planModal = document.getElementById("planModal");
+      const planTitle = document.getElementById("plan-title");
+      const planText = document.getElementById("planText");
+      const planPrice = document.getElementById("planPrice");
+      const planSub = document.getElementById("planSub");
+      const planBadge = document.getElementById("planBadge");
+      const planButtons = document.querySelectorAll("[data-plan]");
+      const closePlanButtons = document.querySelectorAll("[data-close-plan]");
+      const transitionMs = 160;
+
+      const openPlanModal = (planName, meta = {}) => {
+        const normalized = String(planName || "").trim().toLowerCase();
+        if (normalized === "free") {
+          window.location.href = "/download";
+          return;
+        }
+
+        if (planTitle) planTitle.textContent = `Тариф ${planName}`;
+        if (planText) {
+          planText.textContent = `Оформи ${planName}, перейди к оплате и потом отправь заявку на проверку.`;
+        }
+        if (planPrice) {
+          planPrice.textContent = meta.price || (normalized === "lifetime" ? "1990₽" : "599₽");
+        }
+        if (planSub) {
+          planSub.textContent = meta.sub || (normalized === "lifetime" ? "единоразово" : "в месяц");
+        }
+        if (planBadge) {
+          planBadge.textContent = meta.badge || (normalized === "lifetime" ? "Навсегда" : "Популярный");
+        }
+
+        const actionLink = planModal?.querySelector(".btn-primary");
+        if (actionLink instanceof HTMLAnchorElement) {
+          actionLink.href = `/checkout?plan=${normalized}`;
+          actionLink.textContent = "Перейти к оплате";
+        }
+
+        if (!planModal) return;
+        planModal.hidden = false;
+        planModal.setAttribute("aria-hidden", "false");
+        requestAnimationFrame(() => planModal.classList.add("is-open"));
+        html.classList.add("modal-open");
+        body.classList.add("modal-open");
+      };
+
+      const closePlanModal = () => {
+        if (!planModal) return;
+        planModal.classList.remove("is-open");
+        planModal.setAttribute("aria-hidden", "true");
+        html.classList.remove("modal-open");
+        body.classList.remove("modal-open");
+        window.setTimeout(() => {
+          planModal.hidden = true;
+        }, transitionMs);
+      };
+
+      planButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const card = button.closest(".tariff-card");
+          const price = card?.querySelector(".price-value")?.textContent?.trim() || "";
+          const sub = card?.querySelector(".price-sub")?.textContent?.trim() || "";
+          const badge = card?.querySelector(".plan-pill")?.textContent?.trim() || "";
+
+          openPlanModal(button.getAttribute("data-plan") || "Astra", {
+            price,
+            sub,
+            badge,
+          });
+        });
+      });
+
+      closePlanButtons.forEach((button) => {
+        button.addEventListener("click", closePlanModal);
+      });
+
+      planModal?.addEventListener("click", (event) => {
+        if (event.target === planModal) closePlanModal();
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closePlanModal();
+      });
+    </script>
+
+    <script is:inline>
+      (() => {
+        const shell = document.querySelector(".page-shell.page-transition");
+        if (!(shell instanceof HTMLElement)) return;
+
+        const makeReady = () => {
+          requestAnimationFrame(() => {
+            shell.classList.add("page-ready");
+            shell.classList.remove("page-leaving");
+            document.querySelector(".route-loader")?.classList.remove("is-active");
+          });
+        };
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", makeReady, { once: true });
+        } else {
+          makeReady();
+        }
+
+        window.addEventListener("pageshow", makeReady);
+
+        document.addEventListener("click", (event) => {
+          const link = event.target instanceof Element ? event.target.closest("a") : null;
+          if (!link) return;
+
+          const href = link.getAttribute("href");
+          if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
+          if (link.hasAttribute("download")) return;
+          if (link.target && link.target !== "_self") return;
+          if (event.defaultPrevented) return;
+          if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+          const url = new URL(link.href, window.location.href);
+          if (url.origin !== window.location.origin) return;
+          if (url.href === window.location.href) return;
+
+          event.preventDefault();
+          shell.classList.remove("page-ready");
+          shell.classList.add("page-leaving");
+          document.querySelector(".route-loader")?.classList.add("is-active");
+
+          window.setTimeout(() => {
+            window.location.href = url.href;
+          }, 110);
+        });
+      })();
+    </script>
+  </body>
+</html>
+
+<style is:inline>
+  .pricing-orbit {
+    position: fixed;
+    border-radius: 999px;
+    pointer-events: none;
+    opacity: 0.22;
+    filter: blur(1px);
+    border: 1px solid rgba(141, 99, 255, 0.14);
+    animation: orbitFloat 14s ease-in-out infinite;
+  }
+
+  .pricing-orbit--one {
+    width: 420px;
+    height: 420px;
+    right: -160px;
+    top: 180px;
+    background: radial-gradient(circle at 30% 30%, rgba(141, 99, 255, 0.06), transparent 62%);
+  }
+
+  .pricing-orbit--two {
+    width: 300px;
+    height: 300px;
+    left: -120px;
+    bottom: 120px;
+    background: radial-gradient(circle at 60% 40%, rgba(92, 118, 255, 0.05), transparent 66%);
+    animation-duration: 18s;
+  }
+
+  .pricing-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.08fr) minmax(420px, 0.92fr);
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .pricing-hero-copy {
+    display: grid;
+    gap: 14px;
+    align-content: center;
+    min-height: 240px;
+  }
+
+  .hero-copy-text {
+    max-width: 56ch;
+  }
+
+  .hero-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .compare-panel {
+    display: grid;
+    gap: 16px;
+  }
+
+  .compare-panel--hero {
+    height: 100%;
+    align-content: start;
+  }
+
+  .plans-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .tariff-card__inner {
+    display: grid;
+    gap: 18px;
+    height: 100%;
+  }
+
+  .tariff-card,
+  .payment-row,
+  .compare-row {
+    transition:
+      transform 180ms ease,
+      border-color 180ms ease,
+      background 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  .tariff-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(141, 99, 255, 0.22);
+    box-shadow:
+      0 30px 90px rgba(0, 0, 0, 0.46),
+      0 0 0 1px rgba(141, 99, 255, 0.08);
+  }
+
+  .tariff-card:hover .tariff-price strong {
+    color: #ffffff;
+    text-shadow: 0 0 24px rgba(141, 99, 255, 0.12);
+  }
+
+  .tariff-card:hover .feature-row {
+    border-color: rgba(141, 99, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .feature-row {
+    transition:
+      transform 180ms ease,
+      border-color 180ms ease,
+      background 180ms ease;
+  }
+
+  .tariff-card:hover .feature-row:nth-child(1) { transform: translateX(2px); }
+  .tariff-card:hover .feature-row:nth-child(2) { transform: translateX(4px); }
+  .tariff-card:hover .feature-row:nth-child(3) { transform: translateX(6px); }
+  .tariff-card:hover .feature-row:nth-child(4) { transform: translateX(8px); }
+  .tariff-card:hover .feature-row:nth-child(5) { transform: translateX(10px); }
+
+  .payment-row:hover {
+    transform: translateY(-3px);
+    border-color: rgba(141, 99, 255, 0.14);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .payment-row:hover .payment-icon-wrap {
+    border-color: rgba(141, 99, 255, 0.18);
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: inset 0 0 0 1px rgba(141, 99, 255, 0.04);
+  }
+
+  .payment-icon-wrap {
+    transition:
+      border-color 180ms ease,
+      background 180ms ease,
+      transform 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  .payment-row:hover .payment-icon-wrap {
+    transform: scale(1.04);
+  }
+
+  .compare-row:hover {
+    transform: translateY(-2px);
+    border-color: rgba(141, 99, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .tariff-card.is-featured {
+    border-color: rgba(173, 146, 255, 0.28);
+    background:
+      radial-gradient(circle at 18% 0%, rgba(181, 150, 255, 0.18), transparent 34%),
+      linear-gradient(180deg, rgba(24, 18, 43, 0.96), rgba(8, 10, 18, 0.98));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 28px 84px rgba(0, 0, 0, 0.48),
+      0 0 0 1px rgba(141, 99, 255, 0.08),
+      0 0 54px rgba(124, 58, 237, 0.18);
+    transform: translateY(-6px);
+    backdrop-filter: blur(20px) saturate(120%);
+  }
+
+  .tariff-card.is-featured::before {
+    inset: auto auto -84px -28px;
+    width: 220px;
+    height: 220px;
+    background: radial-gradient(circle, rgba(141, 99, 255, 0.18), transparent 72%);
+  }
+
+  .tariff-card.is-featured::after {
+    content: "";
+    position: absolute;
+    inset: 1px 1px auto 1px;
+    height: 40%;
+    border-radius: 28px 28px 120px 120px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
+    opacity: 0.46;
+    pointer-events: none;
+  }
+
+  .tariff-card.is-featured .pill.mid {
+    background: linear-gradient(180deg, rgba(141, 99, 255, 0.26), rgba(141, 99, 255, 0.14));
+    border-color: rgba(184, 159, 255, 0.24);
+    color: #f1ebff;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .tariff-card.is-featured .muted {
+    color: rgba(231, 234, 244, 0.8);
+  }
+
+  .tariff-card.is-featured .feature-row {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02));
+    border-color: rgba(180, 152, 255, 0.11);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .tariff-card.is-featured .feature-dot {
+    background: #c1a2ff;
+    box-shadow: 0 0 18px rgba(193, 162, 255, 0.44);
+  }
+
+  .tariff-card.is-featured .btn-primary {
+    background: linear-gradient(135deg, rgba(123, 73, 255, 0.98) 0%, rgba(156, 118, 255, 0.96) 55%, rgba(189, 160, 255, 0.95) 100%);
+    border: 1px solid rgba(212, 195, 255, 0.22);
+    box-shadow:
+      0 16px 38px rgba(124, 58, 237, 0.3),
+      inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+
+  .tariff-top {
+    display: grid;
+    gap: 12px;
+  }
+
+  .tariff-price {
+    display: grid;
+    gap: 4px;
+  }
+
+  .tariff-price strong {
+    font-size: clamp(2rem, 4vw, 2.8rem);
+    line-height: 0.95;
+    letter-spacing: -0.05em;
+  }
+
+  .feature-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .feature-row {
+    display: grid;
+    grid-template-columns: 10px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .feature-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    margin-top: 6px;
+    background: rgba(141, 99, 255, 0.92);
+    box-shadow: 0 0 14px rgba(141, 99, 255, 0.36);
+  }
+
+  .payments-wide .panel-inner {
+    display: grid;
+    gap: 18px;
+  }
+
+  .payments-head {
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    margin-bottom: 0;
+  }
+
+  .payments-head .muted {
+    max-width: 34ch;
+    text-align: right;
+  }
+
+  .payments-wide-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .payment-row {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 14px;
+    padding: 16px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    align-items: center;
+  }
+
+  .payment-row--wide {
+    min-height: 168px;
+    align-content: start;
+  }
+
+  .payment-icon-wrap {
+    width: 56px;
+    height: 56px;
+    border-radius: 18px;
+    display: grid;
+    place-items: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .payment-icon {
+    max-width: 34px;
+    max-height: 34px;
+    display: block;
+    object-fit: contain;
+  }
+
+  .payment-copy {
+    display: grid;
+    gap: 6px;
+  }
+
+  .payment-copy strong {
+    font-size: 1rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+
+  .payment-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .payment-chip {
+    min-height: 28px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.045);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--muted);
+    font-size: 0.86rem;
+  }
+
+  .compare-table {
+    display: grid;
+    gap: 10px;
+  }
+
+  .compare-head,
+  .compare-row {
+    display: grid;
+    grid-template-columns: 1.35fr repeat(3, minmax(56px, 0.5fr));
+    gap: 10px;
+    align-items: center;
+  }
+
+  .compare-head {
+    padding: 0 10px;
+    color: var(--muted);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  .compare-row {
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .compare-row strong {
+    text-align: center;
+  }
+
+  .modal-actions-spaced {
+    margin-top: 22px;
+    padding-top: 0;
+    align-items: center;
+  }
+
+  .modal-actions-split {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(245, 247, 255, 0.9);
+    transition:
+      transform 160ms ease,
+      border-color 160ms ease,
+      background 160ms ease,
+      box-shadow 160ms ease;
+  }
+
+  .modal-close:hover {
+    transform: translateY(-1px);
+    border-color: rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.07);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
+  }
+
+  .modal-close span {
+    position: absolute;
+    width: 16px;
+    height: 1.7px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+
+  .modal-close span:first-child {
+    transform: rotate(45deg);
+  }
+
+  .modal-close span:last-child {
+    transform: rotate(-45deg);
+  }
+
+  .dialog-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+  }
+
+  .dialog-heading {
+    display: grid;
+    gap: 8px;
+  }
+
+  .dialog-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .dialog-icon svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .dialog-icon-plan {
+    color: #a789ff;
+    background: linear-gradient(180deg, rgba(140, 99, 255, 0.24), rgba(140, 99, 255, 0.08));
+    border-color: rgba(140, 99, 255, 0.22);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 16px 36px rgba(120, 84, 255, 0.16);
+  }
+
+  .dialog-note {
+    position: relative;
+    margin-top: 18px;
+    padding: 16px 18px;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.025));
+  }
+
+  .dialog-note strong {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 0.95rem;
+    letter-spacing: -0.02em;
+  }
+
+  .dialog-note ul {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 8px;
+    color: rgba(229, 232, 245, 0.8);
+    line-height: 1.45;
+  }
+
+  .dialog-note-plan {
+    border-color: rgba(140, 99, 255, 0.18);
+    background: linear-gradient(180deg, rgba(140, 99, 255, 0.12), rgba(255, 255, 255, 0.03));
+  }
+
+  .dialog-accent {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 190px;
+    height: 190px;
+    border-radius: 999px;
+    filter: blur(18px);
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  .dialog-accent-plan {
+    top: -60px;
+    left: -40px;
+    background: radial-gradient(circle, rgba(141, 99, 255, 0.44), rgba(141, 99, 255, 0));
+  }
+
+  .plan-summary {
+    margin-top: 18px;
+    display: grid;
+    gap: 16px;
+    padding: 18px;
+    border-radius: 22px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.03));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .plan-summary-main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px 12px;
+  }
+
+  .plan-summary-label,
+  .plan-summary-sub {
+    color: rgba(229, 232, 245, 0.68);
+  }
+
+  .plan-summary-label {
+    width: 100%;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  .plan-summary-main strong {
+    font-size: clamp(1.8rem, 4.6vw, 2.4rem);
+    line-height: 1;
+    letter-spacing: -0.05em;
+  }
+
+  .plan-summary-sub {
+    font-size: 1rem;
+  }
+
+  .plan-summary-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .plan-chip {
+    min-height: 34px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    border: 1px solid rgba(160, 128, 255, 0.18);
+    background: rgba(141, 99, 255, 0.12);
+    color: #e7dcff;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .plan-chip-soft {
+    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.045);
+    color: rgba(229, 232, 245, 0.76);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 0.88rem;
+  }
+
+  html.modal-open,
+  body.modal-open {
+    overflow: hidden;
+  }
+
+  .plan-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 140;
+    display: grid;
+    place-items: center;
+    padding: max(24px, env(safe-area-inset-top, 0px) + 8px) 20px max(24px, env(safe-area-inset-bottom, 0px) + 8px);
+    background: rgba(2, 4, 10, 0.78);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    opacity: 0;
+    pointer-events: none;
+    overflow: hidden;
+    overscroll-behavior: contain;
+    transition: opacity 160ms ease;
+  }
+
+  .plan-overlay.is-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .plan-dialog {
+    position: relative;
+    width: min(100%, 592px);
+    margin: 0;
+    padding: 28px;
+    background:
+      radial-gradient(circle at top left, rgba(141, 99, 255, 0.16), transparent 34%),
+      linear-gradient(180deg, rgba(14, 17, 30, 0.985), rgba(8, 10, 20, 0.975));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 30px;
+    box-shadow:
+      0 28px 90px rgba(0, 0, 0, 0.52),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transform: translate3d(0, 12px, 0) scale(0.985);
+    transition: transform 160ms ease, box-shadow 160ms ease;
+    max-height: none;
+    overflow: clip;
+  }
+
+  .plan-overlay.is-open .plan-dialog {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  .plan-dialog h3 {
+    margin: 0;
+    font-size: clamp(1.45rem, 4vw, 1.9rem);
+  }
+
+  .plan-dialog .eyebrow {
+    margin: 0;
+  }
+
+  .plan-dialog .muted {
+    max-width: 38ch;
+    color: rgba(229, 232, 245, 0.78);
+  }
+
+  .plan-dialog .btn {
+    min-height: 52px;
+    border-radius: 17px;
+  }
+
+
+  @keyframes orbitFloat {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    50% { transform: translate3d(0, -14px, 0); }
+  }
+
+  @media (max-width: 1180px) {
+    .pricing-hero,
+    .plans-grid,
+    .payments-wide-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .pricing-hero {
+      grid-template-columns: 1fr;
+    }
+
+    .payments-head {
+      grid-template-columns: 1fr;
+    }
+
+    .payments-head .muted {
+      text-align: left;
+      max-width: 100%;
+    }
+
+    .page-footer__inner {
+      flex-direction: column;
+      align-items: stretch;
+      text-align: center;
+    }
+
+    .page-footer__brand {
+      justify-content: center;
+    }
+
+    .page-footer__links {
+      justify-content: center;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .compare-head,
+    .compare-row {
+      grid-template-columns: 1.2fr repeat(3, minmax(48px, 1fr));
+    }
+
+    .pricing-orbit {
+      display: none;
+    }
+
+    .plan-overlay {
+      padding: max(18px, env(safe-area-inset-top, 0px) + 6px) 14px max(18px, env(safe-area-inset-bottom, 0px) + 6px);
+    }
+
+    .plan-dialog {
+      width: min(100%, 440px);
+      padding: 22px 18px 18px;
+      border-radius: 24px;
+    }
+
+    .dialog-header {
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    .dialog-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+    }
+
+    .modal-actions-split {
+      grid-template-columns: 1fr;
+    }
+
+    .modal-close {
+      top: 14px;
+      right: 14px;
+      width: 40px;
+      height: 40px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tariff-card,
+    .payment-row,
+    .compare-row,
+    .feature-row,
+    .payment-icon-wrap {
+      transition: none !important;
+      transform: none !important;
+    }
+  }
+</style>

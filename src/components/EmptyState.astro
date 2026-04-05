@@ -1,0 +1,16 @@
+---
+import Icon from "./Icon.astro";
+export interface Props {
+  title: string;
+  text: string;
+  icon?: "empty" | "sparkles" | "clock" | "devices" | "mail" | "shield" | "bolt";
+}
+const { title, text, icon = "empty" } = Astro.props;
+---
+<div class="ui-empty-state">
+  <div class="ui-empty-icon"><Icon name={icon} size={22} /></div>
+  <div class="ui-empty-copy">
+    <strong>{title}</strong>
+    <span>{text}</span>
+  </div>
+</div>

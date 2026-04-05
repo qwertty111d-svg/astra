@@ -1,0 +1,1054 @@
+---
+export const prerender = false;
+
+import "../../styles/astra-members.css";
+import { getRecentAuditLogs, getSessionsForUser } from "../../lib/server/auth.js";
+import { isAdminEmail } from "../../lib/server/payments.js";
+import AccountTopBar from "../../components/AccountTopBar.astro";
+
+function formatDateTime(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function formatActionLabel(action) {
+  const map = {
+    login_success: "Успешный вход",
+    login_success_2fa: "Вход через 2FA",
+    login_success_recovery_code: "Вход по recovery code",
+    password_changed: "Пароль изменён",
+    email_change_started: "Запущена смена email",
+    other_sessions_revoked: "Завершены другие сессии",
+    "2fa_enabled": "2FA подключена",
+    "2fa_disabled": "2FA отключена",
+    "2fa_disabled_by_recovery": "2FA отключена recovery code",
+    "2fa_recovery_codes_regenerated": "Обновлены recovery codes",
+    "2fa_setup_started": "Создан новый ключ 2FA",
+  };
+  return map[action] ?? action;
+}
+
+const currentUser = Astro.locals.user;
+const isAdmin = currentUser ? isAdminEmail(currentUser.email) : false;
+
+if (!currentUser) {
+  return Astro.redirect("/login?next=/account/security");
+}
+
+const currentSession = Astro.locals.session;
+const rawSessions = await getSessionsForUser(currentUser.id);
+const recentActions = await getRecentAuditLogs(currentUser.id, 8);
+
+const sessions = rawSessions.map((session) => ({
+  ...session,
+  current: session.token === currentSession?.token,
+  status: session.token === currentSession?.token ? "Текущее устройство" : "Недавняя сессия",
+  lastSeen: formatDateTime(session.lastSeenAt),
+}));
+
+const activeSession = sessions.find((item) => item.current) ?? sessions[0] ?? null;
+let recoveryCount = 0;
+try {
+  const parsed = JSON.parse(currentUser.twoFactorRecoveryCodes ?? "[]");
+  if (Array.isArray(parsed)) recoveryCount = parsed.length;
+} catch {}
+
+const user = {
+  email: currentUser.email,
+  pendingEmail: currentUser.pendingEmail ?? null,
+  emailVerified: Boolean(currentUser.emailVerified),
+  hasPendingEmailChange: Boolean(currentUser.pendingEmail),
+  lastLoginAt: activeSession?.lastSeen ?? "—",
+  currentDevice: activeSession?.name ?? "—",
+  currentIP: activeSession?.ip ?? "—",
+  twoFactorEnabled: Boolean(currentUser.twoFactorEnabled),
+  recoveryCount,
+};
+import MotionBackground from "../../components/MotionBackground.astro";
+---
+
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Astra • Безопасность</title>
+    <meta name="description" content="Настройки безопасности аккаунта Astra." />
+    <script is:inline>document.documentElement.classList.add("js");</script>
+  </head>
+
+  <body class="page-transition page-ready">
+    <MotionBackground />
+    <div class="route-loader" aria-hidden="true"></div>
+
+    <div class="page-shell">
+      <div class="bg-glow glow-left"></div>
+      <div class="bg-glow glow-right"></div>
+
+      <AccountTopBar current="security" isAdmin={isAdmin} actionHref="/account" actionLabel="В кабинет" />
+
+      <main class="page">
+        <section class="security-hero">
+          <article class="panel" data-reveal="left" style="--delay: 70ms; --dur: 620ms;">
+            <div class="panel-inner hero-summary">
+              <div class="section-head">
+                <p class="eyebrow">безопасность</p>
+                <h1 class="title-xl">Центр безопасности</h1>
+                <p class="muted hero-note">Здесь можно сменить пароль, почту, 2FA и управлять сессиями.</p>
+              </div>
+
+              <div class="hero-pills hero-pills--compact">
+                <span class="pill">Пароль</span>
+                <span class="pill">2FA</span>
+                <span class="pill">Сессии</span>
+              </div>
+
+              <div class="quick-grid">
+                <button class="quick-action quick-action--primary" type="button" data-open-modal="passwordModal">
+                  <strong>Пароль</strong>
+                  <span>обновить доступ и завершить старые сессии</span>
+                </button>
+                <button class="quick-action" type="button" data-open-modal="emailModal">
+                  <strong>Почта</strong>
+                  <span>сменить адрес или отправить письмо повторно</span>
+                </button>
+                <button class="quick-action" type="button" data-open-modal="sessionsModal">
+                  <strong>Сессии</strong>
+                  <span>завершить лишние устройства и оставить текущее</span>
+                </button>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel" data-reveal="right" style="--delay: 120ms; --dur: 700ms;">
+            <div class="panel-inner side-highlight">
+              <div class="section-head row">
+                <div>
+                  <p class="eyebrow">сводка</p>
+                  <h2 class="title-lg">Текущий статус</h2>
+                </div>
+                <span class={`pill ${user.twoFactorEnabled ? "good" : "mid"}`}>
+                  {user.twoFactorEnabled ? "2FA включена" : "2FA отключена"}
+                </span>
+              </div>
+
+              <div class="summary-grid">
+                <div class="summary-card">
+                  <span>Email</span>
+                  <strong>{user.emailVerified ? "Подтверждён" : "Не подтверждён"}</strong>
+                </div>
+                <div class="summary-card">
+                  <span>Сессии</span>
+                  <strong>{sessions.length}</strong>
+                </div>
+                <div class="summary-card">
+                  <span>Последний вход</span>
+                  <strong>{user.lastLoginAt}</strong>
+                </div>
+                <div class="summary-card">
+                  <span>Recovery codes</span>
+                  <strong>{user.twoFactorEnabled ? `${user.recoveryCount} доступно` : "—"}</strong>
+                </div>
+              </div>
+
+              <div class="info-row compact-info-row">
+                <span>Текущее устройство</span>
+                <strong>{user.currentDevice}</strong>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="assurance-strip" data-reveal="up" style="--delay: 150ms; --dur: 760ms;">
+          <div class="assurance-card">
+            <strong>2FA</strong>
+            <span>Подключение, резервные коды и отключение защиты.</span>
+          </div>
+          <div class="assurance-card">
+            <strong>Чувствительные действия</strong>
+            <span>Смена пароля, почты и завершение лишних сессий проходят через дополнительную защиту.</span>
+          </div>
+          <div class="assurance-card">
+            <strong>Журнал событий</strong>
+            <span>Важные действия аккаунта сохраняются в истории.</span>
+          </div>
+        </section>
+
+        <article class="panel" data-reveal="up" style="--delay: 160ms; --dur: 740ms;">
+          <div class="panel-inner twofa-shell">
+            <div class="section-head row">
+              <div>
+                <p class="eyebrow">2fa</p>
+                <h2 class="title-lg">Двухфакторная защита</h2>
+              </div>
+              <span class={`pill ${user.twoFactorEnabled ? "good" : "mid"}`}>{user.twoFactorEnabled ? "Включена" : "Отключена"}</span>
+            </div>
+
+            <div class="twofa-grid">
+              <div class="twofa-card twofa-card--feature">
+                <span class="eyebrow eyebrow-soft">статус</span>
+                <h3>Вход по приложению-аутентификатору</h3>
+                <p class="muted">
+                  {user.twoFactorEnabled
+                    ? "Вход защищён вторым шагом. Recovery codes работают как запасной ключ, если потеряешь телефон."
+                    : "Подключи Google Authenticator, Aegis или 2FAS для входа с 2FA."}
+                </p>
+
+                <div class="twofa-badges">
+                  <span class={`pill ${user.twoFactorEnabled ? "good" : "mid"}`}>{user.twoFactorEnabled ? "Пароль + 2FA" : "Только пароль"}</span>
+                  <span class="pill">{user.twoFactorEnabled ? `${user.recoveryCount} recovery codes` : "Резервный вход доступен после подключения"}</span>
+                </div>
+
+                <div class="hero-actions">
+                  {!user.twoFactorEnabled ? (
+                    <button class="btn btn-primary" type="button" id="setup2faBtn">Подключить 2FA</button>
+                  ) : (
+                    <>
+                      <button class="btn btn-secondary" type="button" id="regenRecoveryBtn">Новый набор recovery codes</button>
+                      <button class="btn btn-danger" type="button" id="disable2faBtn">Отключить 2FA</button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div class="twofa-card">
+                <span class="eyebrow eyebrow-soft">памятка</span>
+                <h3>Что важно сохранить</h3>
+                <div class="bullet-list">
+                  <div class="bullet-row"><span class="bullet-dot"></span><span>Сохрани recovery codes сразу после включения 2FA.</span></div>
+                  <div class="bullet-row"><span class="bullet-dot"></span><span>Не используй recovery codes для обычного входа. Храни их как запасной вариант.</span></div>
+                  <div class="bullet-row"><span class="bullet-dot"></span><span>Если меняешь телефон, заново настрой 2FA и проверь вход.</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <section class="stack-layout">
+          <article class="panel" data-reveal="up" style="--delay: 170ms; --dur: 720ms;">
+            <div class="panel-inner">
+              <div class="section-head">
+                <p class="eyebrow">паспорт</p>
+                <h2 class="title-lg">Данные безопасности</h2>
+              </div>
+
+              <div class="passport-list">
+                <div class="passport-row"><span>Email</span><strong>{user.email}</strong></div>
+                <div class="passport-row"><span>Статус email</span><strong>{user.emailVerified ? "Подтверждён" : "Не подтверждён"}</strong></div>
+                <div class="passport-row"><span>2FA</span><strong>{user.twoFactorEnabled ? "Подключена" : "Не подключена"}</strong></div>
+                <div class="passport-row"><span>IP</span><strong>{user.currentIP}</strong></div>
+                <div class="passport-row"><span>Текущее устройство</span><strong>{user.currentDevice}</strong></div>
+              </div>
+
+              {user.hasPendingEmailChange && (
+                <div class="summary-card pending-card">
+                  <span>Ожидает подтверждения</span>
+                  <strong>{user.pendingEmail}</strong>
+                </div>
+              )}
+            </div>
+          </article>
+
+          <article class="panel" data-reveal="up" style="--delay: 220ms; --dur: 780ms;">
+            <div class="panel-inner devices-panel">
+              <div class="section-head row">
+                <div>
+                  <p class="eyebrow">активность и сессии</p>
+                  <h2 class="title-lg">Устройства</h2>
+                </div>
+                <span class="pill">{sessions.length} всего</span>
+              </div>
+
+              <div class="devices-strip">
+                <div class="mini-status">
+                  <span>Последняя активность</span>
+                  <strong>{user.lastLoginAt}</strong>
+                </div>
+                <div class="mini-status">
+                  <span>Основной метод входа</span>
+                  <strong>{user.twoFactorEnabled ? "Пароль + 2FA" : "Пароль"}</strong>
+                </div>
+              </div>
+
+              <div class="device-list">
+                {sessions.map((session, index) => (
+                  <div class="session-item" data-reveal="fade" style={`--delay: ${280 + index * 35}ms; --dur: ${700 + index * 24}ms;`}>
+                    <div class="session-copy">
+                      <strong>{session.name || "Устройство"}</strong>
+                      <span>{session.ip || "IP не определён"}</span>
+                    </div>
+                    <div class="session-meta">
+                      <span class={`pill ${session.current ? "mid" : ""}`}>{session.status}</span>
+                      <small>{session.lastSeen}</small>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <article class="panel" data-reveal="up" style="--delay: 260ms; --dur: 820ms;">
+          <div class="panel-inner devices-panel">
+            <div class="section-head row">
+              <div>
+                <p class="eyebrow">журнал</p>
+                <h2 class="title-lg">Последние действия</h2>
+              </div>
+              <span class="pill">{recentActions.length} событий</span>
+            </div>
+
+            <div class="device-list">
+              {recentActions.length > 0 ? recentActions.map((item, index) => (
+                <div class="session-item" data-reveal="fade" style={`--delay: ${320 + index * 24}ms; --dur: ${700 + index * 18}ms;`}>
+                  <div class="session-copy">
+                    <strong>{formatActionLabel(item.action)}</strong>
+                    <span>{item.ip ? `IP ${item.ip}` : "Событие аккаунта"}</span>
+                  </div>
+                  <div class="session-meta">
+                    <span class="pill">{formatDateTime(item.createdAt)}</span>
+                  </div>
+                </div>
+              )) : (
+                <div class="empty-state">
+                  <span class="pill">Журнал</span>
+                  <strong>История действий пока пуста</strong>
+                  <span>Когда появятся входы, смена пароля, действия с 2FA и другие важные события, они соберутся здесь.</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </article>
+      </main>
+    </div>
+
+    <div class="modal-backdrop" id="passwordModal" aria-hidden="true">
+      <div class="modal panel security-modal" role="dialog" aria-modal="true">
+        <p class="eyebrow">безопасность</p>
+        <h3>Смена пароля</h3>
+        <p class="muted">Задай новый пароль для аккаунта и при необходимости закрой старые сессии.</p>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="currentPassword">Текущий пароль</label>
+            <input id="currentPassword" type="password" placeholder="Введите текущий пароль" />
+          </div>
+          <div class="field">
+            <label for="newPassword">Новый пароль</label>
+            <input id="newPassword" type="password" placeholder="Минимум 8 символов" />
+          </div>
+          <div class="field field-full">
+            <label for="repeatPassword">Повтор нового пароля</label>
+            <input id="repeatPassword" type="password" placeholder="Повторите новый пароль" />
+          </div>
+
+          {user.twoFactorEnabled && (
+            <>
+              <div class="field">
+                <label for="passwordTwoFactorCode">Код 2FA</label>
+                <input id="passwordTwoFactorCode" type="text" inputmode="numeric" placeholder="123456" />
+              </div>
+              <div class="field">
+                <label for="passwordRecoveryCode">или recovery code</label>
+                <input id="passwordRecoveryCode" type="text" placeholder="ABCDE-12345" />
+              </div>
+            </>
+          )}
+        </div>
+
+        <div class="modal-actions modal-actions-spaced">
+          <button class="btn btn-secondary" type="button" data-close-modal="passwordModal">Отмена</button>
+          <button class="btn btn-primary" type="button" id="changePasswordBtn">Сохранить пароль</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="sessionsModal" aria-hidden="true">
+      <div class="modal panel security-modal" role="dialog" aria-modal="true">
+        <p class="eyebrow">подтверждение</p>
+        <h3>Завершить другие сессии</h3>
+        <p class="muted">Текущее устройство останется активным, остальные сессии будут завершены.</p>
+
+        {user.twoFactorEnabled && (
+          <div class="form-grid">
+            <div class="field">
+              <label for="sessionsTwoFactorCode">Код 2FA</label>
+              <input id="sessionsTwoFactorCode" type="text" inputmode="numeric" placeholder="123456" />
+            </div>
+            <div class="field">
+              <label for="sessionsRecoveryCode">или recovery code</label>
+              <input id="sessionsRecoveryCode" type="text" placeholder="ABCDE-12345" />
+            </div>
+          </div>
+        )}
+
+        <div class="modal-actions modal-actions-spaced">
+          <button class="btn btn-secondary" type="button" data-close-modal="sessionsModal">Отмена</button>
+          <button class="btn btn-danger" type="button" id="logoutOthersBtn">Завершить</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="emailModal" aria-hidden="true">
+      <div class="modal panel security-modal" role="dialog" aria-modal="true">
+        <p class="eyebrow">почта аккаунта</p>
+        <h3>Смена email</h3>
+        <p class="muted">Текущий email: <strong>{user.email}</strong></p>
+
+        <div class="form-grid">
+          <div class="field field-full">
+            <label for="newEmailInput">Новый email</label>
+            <input
+              id="newEmailInput"
+              type="email"
+              placeholder={user.hasPendingEmailChange ? user.pendingEmail ?? "new@example.com" : "new@example.com"}
+              value={user.hasPendingEmailChange ? user.pendingEmail ?? "" : ""}
+            />
+          </div>
+
+          <div class="field field-full">
+            <label for="emailPasswordInput">Текущий пароль</label>
+            <input id="emailPasswordInput" type="password" placeholder="Подтвердите текущий пароль" />
+          </div>
+
+          {user.twoFactorEnabled && (
+            <>
+              <div class="field">
+                <label for="emailTwoFactorCode">Код 2FA</label>
+                <input id="emailTwoFactorCode" type="text" inputmode="numeric" placeholder="123456" />
+              </div>
+              <div class="field">
+                <label for="emailRecoveryCode">или recovery code</label>
+                <input id="emailRecoveryCode" type="text" placeholder="ABCDE-12345" />
+              </div>
+            </>
+          )}
+        </div>
+
+        <p class="muted helper-text">
+          {user.hasPendingEmailChange
+            ? `Сейчас ожидает подтверждения: ${user.pendingEmail}`
+            : "После подтверждения письма новый email станет основным."}
+        </p>
+
+        <div class="modal-actions modal-actions-spaced">
+          <button class="btn btn-secondary" type="button" data-close-modal="emailModal">Отмена</button>
+          <button class="btn btn-secondary" type="button" id="resendEmailBtn" disabled={!user.hasPendingEmailChange} style={!user.hasPendingEmailChange ? "opacity:.55; cursor:not-allowed;" : ""}>
+            Отправить письмо ещё раз
+          </button>
+          <button class="btn btn-primary" type="button" id="saveEmailBtn">Сохранить email</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="setup2faModal" aria-hidden="true">
+      <div class="modal panel security-modal" role="dialog" aria-modal="true">
+        <p class="eyebrow">2fa</p>
+        <h3>Подключение 2FA</h3>
+        <p class="muted">Создай ключ, добавь его в приложение-аутентификатор и подтверди 6-значным кодом.</p>
+
+        <div class="summary-grid compact-grid">
+          <div class="summary-card">
+            <span>Секрет</span>
+            <strong id="twoFactorSecret">—</strong>
+          </div>
+          <div class="summary-card">
+            <span>Статус</span>
+            <strong id="twoFactorSetupState">Не создан</strong>
+          </div>
+        </div>
+
+        <div class="field field-full" style="margin-top:14px;">
+          <label for="otpauthUrlField">OTPAUTH URL</label>
+          <input id="otpauthUrlField" type="text" readonly value="" />
+        </div>
+
+        <div class="field field-full" style="margin-top:14px;">
+          <label for="twoFactorVerifyCode">Код из приложения</label>
+          <input id="twoFactorVerifyCode" type="text" inputmode="numeric" placeholder="123456" />
+        </div>
+
+        <div class="modal-actions modal-actions-spaced">
+          <button class="btn btn-secondary" type="button" data-close-modal="setup2faModal">Отмена</button>
+          <button class="btn btn-secondary" type="button" id="create2faSecretBtn">Создать ключ</button>
+          <button class="btn btn-primary" type="button" id="verify2faBtn">Подключить 2FA</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="recoveryCodesModal" aria-hidden="true">
+      <div class="modal panel security-modal" role="dialog" aria-modal="true">
+        <p class="eyebrow">recovery codes</p>
+        <h3>Новый набор recovery codes</h3>
+        <p class="muted">Чтобы перевыпустить коды, подтверди действие паролем и кодом 2FA.</p>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="recoveryPassword">Текущий пароль</label>
+            <input id="recoveryPassword" type="password" placeholder="Введите текущий пароль" />
+          </div>
+          <div class="field">
+            <label for="recoveryTwoFactorCode">Код 2FA</label>
+            <input id="recoveryTwoFactorCode" type="text" inputmode="numeric" placeholder="123456" />
+          </div>
+        </div>
+
+        <div class="modal-actions modal-actions-spaced">
+          <button class="btn btn-secondary" type="button" data-close-modal="recoveryCodesModal">Отмена</button>
+          <button class="btn btn-primary" type="button" id="regenCodesBtn">Создать новый набор</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="disable2faModal" aria-hidden="true">
+      <div class="modal panel security-modal" role="dialog" aria-modal="true">
+        <p class="eyebrow">2fa</p>
+        <h3>Отключить двухфакторную защиту</h3>
+        <p class="muted">Подтверди действие паролем и кодом 2FA или используй один recovery code.</p>
+
+        <div class="form-grid">
+          <div class="field field-full">
+            <label for="disablePassword">Текущий пароль</label>
+            <input id="disablePassword" type="password" placeholder="Введите текущий пароль" />
+          </div>
+          <div class="field">
+            <label for="disableTwoFactorCode">Код 2FA</label>
+            <input id="disableTwoFactorCode" type="text" inputmode="numeric" placeholder="123456" />
+          </div>
+          <div class="field">
+            <label for="disableRecoveryCode">или recovery code</label>
+            <input id="disableRecoveryCode" type="text" placeholder="ABCDE-12345" />
+          </div>
+        </div>
+
+        <div class="modal-actions modal-actions-spaced">
+          <button class="btn btn-secondary" type="button" data-close-modal="disable2faModal">Отмена</button>
+          <button class="btn btn-danger" type="button" id="disable2faConfirmBtn">Отключить 2FA</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="codesModal" aria-hidden="true">
+      <div class="modal panel security-modal" role="dialog" aria-modal="true">
+        <p class="eyebrow">сохрани обязательно</p>
+        <h3>Recovery codes</h3>
+        <p class="muted">Сохрани эти коды в надёжном месте. Их можно использовать для входа, если приложение-аутентификатор недоступно.</p>
+
+        <div class="field field-full" style="margin-top:14px;">
+          <label for="recoveryCodesOutput">Новый набор кодов</label>
+          <textarea id="recoveryCodesOutput" rows="9" readonly></textarea>
+        </div>
+
+        <div class="modal-actions modal-actions-spaced">
+          <button class="btn btn-secondary" type="button" id="copyRecoveryCodesBtn">Скопировать</button>
+          <button class="btn btn-primary" type="button" data-close-modal="codesModal">Готово</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script is:inline>
+      const body = document.body;
+      const toast = document.getElementById("toast");
+      let toastTimer;
+      let currentTwoFactorSetup = null;
+
+      function openModal(id) {
+        const modal = document.getElementById(id);
+        if (!modal) return;
+        modal.classList.add("show");
+        body.classList.add("modal-open");
+      }
+
+      function closeModal(id) {
+        const modal = document.getElementById(id);
+        if (!modal) return;
+        modal.classList.remove("show");
+
+        if (!document.querySelector(".modal-backdrop.show")) {
+          body.classList.remove("modal-open");
+        }
+      }
+
+      function closeAllModals() {
+        document.querySelectorAll(".modal-backdrop.show").forEach((modal) => {
+          modal.classList.remove("show");
+        });
+        body.classList.remove("modal-open");
+      }
+
+      const showToast = (message) => {
+        if (!toast) return;
+        toast.textContent = message;
+        toast.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove("show"), 3200);
+      };
+
+      const apiPost = async (url, payload = {}) => {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || "Ошибка запроса");
+        }
+
+        return data;
+      };
+
+      const afterSecurityChange = (message) => {
+        showToast(message);
+        setTimeout(() => window.location.reload(), 850);
+      };
+
+      const emailState = new URLSearchParams(window.location.search).get("email");
+      if (emailState === "verified") {
+        showToast("Новый email подтверждён");
+        history.replaceState({}, "", "/account/security");
+      } else if (emailState === "invalid") {
+        showToast("Ссылка подтверждения недействительна или истекла");
+        history.replaceState({}, "", "/account/security");
+      }
+
+      document.querySelectorAll("[data-open-modal]").forEach((button) => {
+        button.addEventListener("click", () => openModal(button.getAttribute("data-open-modal")));
+      });
+
+      document.querySelectorAll("[data-close-modal]").forEach((button) => {
+        button.addEventListener("click", () => closeModal(button.getAttribute("data-close-modal")));
+      });
+
+      document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
+        backdrop.addEventListener("click", (event) => {
+          if (event.target === backdrop) {
+            backdrop.classList.remove("show");
+            if (!document.querySelector(".modal-backdrop.show")) {
+              body.classList.remove("modal-open");
+            }
+          }
+        });
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeAllModals();
+      });
+
+      document.getElementById("changePasswordBtn")?.addEventListener("click", async () => {
+        const currentPassword = document.getElementById("currentPassword")?.value ?? "";
+        const newPassword = document.getElementById("newPassword")?.value ?? "";
+        const repeatPassword = document.getElementById("repeatPassword")?.value ?? "";
+
+        if (!currentPassword || !newPassword || !repeatPassword) {
+          showToast("Заполни все поля для смены пароля");
+          return;
+        }
+
+        if (newPassword !== repeatPassword) {
+          showToast("Новые пароли не совпадают");
+          return;
+        }
+
+        try {
+          const payload = {
+            currentPassword,
+            newPassword,
+            logoutOthers: true,
+            twoFactorCode: document.getElementById("passwordTwoFactorCode")?.value ?? "",
+            recoveryCode: document.getElementById("passwordRecoveryCode")?.value ?? "",
+          };
+          const data = await apiPost("/api/account/change-password", payload);
+          closeModal("passwordModal");
+          afterSecurityChange(data.message || "Пароль обновлён");
+        } catch (error) {
+          showToast(error.message || "Ошибка смены пароля");
+        }
+      });
+
+      document.getElementById("saveEmailBtn")?.addEventListener("click", async () => {
+        try {
+          const payload = {
+            newEmail: document.getElementById("newEmailInput")?.value ?? "",
+            currentPassword: document.getElementById("emailPasswordInput")?.value ?? "",
+            twoFactorCode: document.getElementById("emailTwoFactorCode")?.value ?? "",
+            recoveryCode: document.getElementById("emailRecoveryCode")?.value ?? "",
+          };
+          const data = await apiPost("/api/account/change-email", payload);
+          closeModal("emailModal");
+          afterSecurityChange(data.message || "Письмо для подтверждения отправлено");
+        } catch (error) {
+          showToast(error.message || "Ошибка смены email");
+        }
+      });
+
+      document.getElementById("resendEmailBtn")?.addEventListener("click", async () => {
+        try {
+          const data = await apiPost("/api/account/resend-email-verification");
+          closeModal("emailModal");
+          showToast(data.message || "Письмо отправлено ещё раз");
+        } catch (error) {
+          showToast(error.message || "Ошибка повторной отправки");
+        }
+      });
+
+      document.getElementById("logoutOthersBtn")?.addEventListener("click", async () => {
+        try {
+          const payload = {
+            twoFactorCode: document.getElementById("sessionsTwoFactorCode")?.value ?? "",
+            recoveryCode: document.getElementById("sessionsRecoveryCode")?.value ?? "",
+          };
+          const data = await apiPost("/api/account/logout-other-sessions", payload);
+          closeModal("sessionsModal");
+          afterSecurityChange(data.message || "Сессии обновлены");
+        } catch (error) {
+          showToast(error.message || "Ошибка завершения сессий");
+        }
+      });
+
+      document.getElementById("setup2faBtn")?.addEventListener("click", async () => {
+        openModal("setup2faModal");
+      });
+
+      document.getElementById("create2faSecretBtn")?.addEventListener("click", async () => {
+        try {
+          const data = await apiPost("/api/account/2fa/setup");
+          currentTwoFactorSetup = data;
+          document.getElementById("twoFactorSecret").textContent = data.secret || "—";
+          document.getElementById("otpauthUrlField").value = data.otpauthUrl || "";
+          document.getElementById("twoFactorSetupState").textContent = "Ключ создан";
+          showToast("Ключ 2FA создан");
+        } catch (error) {
+          showToast(error.message || "Ошибка создания ключа 2FA");
+        }
+      });
+
+      document.getElementById("verify2faBtn")?.addEventListener("click", async () => {
+        try {
+          if (!currentTwoFactorSetup) {
+            showToast("Сначала создай ключ 2FA");
+            return;
+          }
+
+          const data = await apiPost("/api/account/2fa/verify", {
+            code: document.getElementById("twoFactorVerifyCode")?.value ?? "",
+          });
+
+          document.getElementById("recoveryCodesOutput").value =
+            data.recoveryCodesText || (Array.isArray(data.recoveryCodes) ? data.recoveryCodes.join("\n") : "");
+
+          closeModal("setup2faModal");
+          openModal("codesModal");
+          showToast(data.message || "2FA подключена");
+        } catch (error) {
+          showToast(error.message || "Ошибка подтверждения 2FA");
+        }
+      });
+
+      document.getElementById("regenRecoveryBtn")?.addEventListener("click", () => {
+        openModal("recoveryCodesModal");
+      });
+
+      document.getElementById("regenCodesBtn")?.addEventListener("click", async () => {
+        try {
+          const data = await apiPost("/api/account/2fa/recovery-codes", {
+            currentPassword: document.getElementById("recoveryPassword")?.value ?? "",
+            code: document.getElementById("recoveryTwoFactorCode")?.value ?? "",
+          });
+
+          document.getElementById("recoveryCodesOutput").value =
+            data.recoveryCodesText || (Array.isArray(data.recoveryCodes) ? data.recoveryCodes.join("\n") : "");
+
+          closeModal("recoveryCodesModal");
+          openModal("codesModal");
+          showToast(data.message || "Новый набор кодов создан");
+        } catch (error) {
+          showToast(error.message || "Ошибка перевыпуска recovery codes");
+        }
+      });
+
+      document.getElementById("disable2faBtn")?.addEventListener("click", () => {
+        openModal("disable2faModal");
+      });
+
+      document.getElementById("disable2faConfirmBtn")?.addEventListener("click", async () => {
+        try {
+          const data = await apiPost("/api/account/2fa/disable", {
+            currentPassword: document.getElementById("disablePassword")?.value ?? "",
+            code: document.getElementById("disableTwoFactorCode")?.value ?? "",
+            recoveryCode: document.getElementById("disableRecoveryCode")?.value ?? "",
+          });
+
+          closeModal("disable2faModal");
+          afterSecurityChange(data.message || "2FA отключена");
+        } catch (error) {
+          showToast(error.message || "Ошибка отключения 2FA");
+        }
+      });
+
+      document.getElementById("copyRecoveryCodesBtn")?.addEventListener("click", async () => {
+        const value = document.getElementById("recoveryCodesOutput")?.value ?? "";
+        if (!value) {
+          showToast("Список recovery codes пока пуст");
+          return;
+        }
+
+        try {
+          await navigator.clipboard.writeText(value);
+          showToast("Recovery codes скопированы");
+        } catch {
+          showToast("Не удалось скопировать recovery codes");
+        }
+      });
+
+      (() => {
+        if (!body || !body.classList.contains("page-transition")) return;
+
+        const makeReady = () => {
+          requestAnimationFrame(() => {
+            body.classList.add("page-ready");
+            body.classList.remove("page-leaving");
+            document.querySelector(".route-loader")?.classList.remove("is-active");
+          });
+        };
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", makeReady, { once: true });
+        } else {
+          makeReady();
+        }
+
+        window.addEventListener("pageshow", makeReady);
+
+        document.addEventListener("click", (event) => {
+          const link = event.target instanceof Element ? event.target.closest("a") : null;
+          if (!link) return;
+
+          const href = link.getAttribute("href");
+          if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
+          if (link.hasAttribute("download")) return;
+          if (link.target && link.target !== "_self") return;
+          if (event.defaultPrevented) return;
+          if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+          const url = new URL(link.href, window.location.href);
+          if (url.origin !== window.location.origin) return;
+          if (url.href === window.location.href) return;
+
+          event.preventDefault();
+          body.classList.remove("page-ready");
+          body.classList.add("page-leaving");
+          document.querySelector(".route-loader")?.classList.add("is-active");
+
+          window.setTimeout(() => {
+            window.location.href = url.href;
+          }, 110);
+        });
+      })();
+    </script>
+  </body>
+</html>
+
+<style is:inline>
+  .security-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(340px, 0.9fr);
+    gap: 16px;
+    align-items: start;
+  }
+
+  .hero-summary .section-head { margin-bottom: 16px; }
+  .hero-note { max-width: 62ch; }
+
+  .quick-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .quick-action {
+    text-align: left;
+    display: grid;
+    gap: 8px;
+    min-height: 96px;
+    padding: 18px 18px 16px;
+    border-radius: 22px;
+    color: var(--text);
+    background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.06);
+  }
+
+  .quick-action strong {
+    font-size: .98rem;
+    font-weight: 650;
+    letter-spacing: -.01em;
+    line-height: 1.15;
+  }
+
+  .quick-action span {
+    color: var(--muted);
+    font-size: .98rem;
+    line-height: 1.4;
+  }
+
+  .quick-action--primary {
+    background: linear-gradient(180deg, rgba(141, 99, 255, 0.14), rgba(255,255,255,.03));
+    border-color: rgba(141,99,255,.18);
+  }
+
+  .twofa-shell,
+  .side-highlight,
+  .devices-panel { display: grid; gap: 14px; align-content: start; }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .summary-card,
+  .mini-status,
+  .twofa-card {
+    display: grid;
+    gap: 8px;
+    padding: 16px 18px;
+    border-radius: 20px;
+    background: rgba(255,255,255,.035);
+    border: 1px solid rgba(255,255,255,.06);
+  }
+
+  .summary-card span,
+  .mini-status span,
+  .passport-row span,
+  .session-copy span { color: var(--muted); }
+
+  .summary-card span,
+  .summary-card strong,
+  .mini-status span,
+  .mini-status strong { display: block; }
+
+  .compact-info-row { margin-top: 2px; }
+
+  .twofa-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(300px, .8fr);
+    gap: 14px;
+  }
+
+  .eyebrow-soft {
+    color: #d9ceff;
+    font-size: .72rem;
+    letter-spacing: .16em;
+  }
+
+  .twofa-card h3 {
+    font-family: "Sora", "Manrope", sans-serif;
+    font-size: 1.18rem;
+    line-height: 1.04;
+    letter-spacing: -.04em;
+    margin: 0;
+  }
+
+  .twofa-badges,
+  .bullet-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .twofa-badges {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .bullet-row {
+    display: grid;
+    grid-template-columns: 10px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+  }
+
+  .bullet-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(141,99,255,.92);
+    box-shadow: 0 0 14px rgba(141,99,255,.28);
+    margin-top: 8px;
+  }
+
+  .stack-layout {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.84fr) minmax(0, 1.16fr);
+    gap: 16px;
+    align-items: start;
+  }
+
+  .passport-list,
+  .device-list { display: grid; gap: 10px; }
+
+  .passport-row,
+  .session-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 16px 18px;
+    border-radius: 20px;
+    background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.05);
+  }
+
+  .passport-row strong { text-align: right; }
+  .devices-strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .session-copy { display: grid; gap: 4px; }
+  .session-copy strong { font-size: 1rem; font-weight: 650; letter-spacing: -.01em; }
+  .session-meta { display: grid; gap: 6px; justify-items: end; text-align: right; }
+  .session-meta small { color: var(--muted); }
+  .pending-card { margin-top: 12px; }
+  .security-modal .muted { line-height: 1.55; }
+  .security-modal .form-grid { gap: 16px; }
+  .security-modal .field { gap: 10px; }
+  .security-modal .field input,
+  .security-modal .field textarea { min-height: 50px; width: 100%; padding: 0 14px; border-radius: 16px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.035); color: var(--text); }
+  .security-modal textarea { min-height: 220px !important; padding: 14px; resize: vertical; }
+  .modal-actions-spaced { margin-top: 18px; padding-top: 2px; align-items: center; }
+  .helper-text { margin-top: 12px; }
+
+  @media (max-width: 1120px) {
+    .security-hero,
+    .stack-layout,
+    .twofa-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 760px) {
+    .quick-grid,
+    .summary-grid,
+    .devices-strip {
+      grid-template-columns: 1fr;
+    }
+
+    .passport-row,
+    .session-item {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .passport-row strong,
+    .session-meta {
+      text-align: left;
+      justify-items: start;
+    }
+  }
+</style>

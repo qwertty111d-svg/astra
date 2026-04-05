@@ -1,0 +1,174 @@
+---
+export const prerender = false;
+
+import "../../styles/astra-members.css";
+import { getPendingPaymentRequestsWithUsers, isAdminEmail } from "../../lib/server/payments.js";
+import AccountTopBar from "../../components/AccountTopBar.astro";
+
+const currentUser = Astro.locals.user;
+if (!currentUser) {
+  return Astro.redirect("/login?next=/admin/payments");
+}
+
+if (!isAdminEmail(currentUser.email)) {
+  return new Response("Недостаточно прав", { status: 403 });
+}
+
+const requests = await getPendingPaymentRequestsWithUsers();
+
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+import MotionBackground from "../../components/MotionBackground.astro";
+---
+
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Astra • Заявки на оплату</title>
+  </head>
+  <body class="page-transition page-ready">
+    <MotionBackground />
+    <div class="page-shell">
+      <div class="bg-glow glow-left"></div>
+      <div class="bg-glow glow-right"></div>
+
+      <AccountTopBar current="payments" isAdmin={true} actionHref="/account" actionLabel="В кабинет" />
+
+      <main class="page">
+        <section class="pricing-hero">
+          <article class="panel">
+            <div class="panel-inner pricing-hero-copy">
+              <p class="eyebrow">админка</p>
+              <h1 class="title-xl">Заявки на оплату</h1>
+              <p class="muted hero-copy-text">Проверь перевод и подтверди или отклони заявку.</p>
+
+              <div class="hero-pills hero-pills--compact">
+                <span class="pill">{requests.length} новых</span>
+                <span class="pill">Ручная проверка</span>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="account-grid">
+          <article class="panel admin-payments-panel" style="grid-column:1 / -1;">
+            <div class="panel-inner" style="display:grid;gap:16px;">
+              {requests.length ? requests.map(({ request, user }) => (
+                <div class="summary-card admin-payment-card" data-request-id={request.id}>
+                  <div class="payment-history-head">
+                    <div class="admin-payment-meta">
+                      <strong>{user.name} • {user.email}</strong>
+                      <span class="muted">Тариф: {request.plan} • Сумма: {request.amountRub}₽</span>
+                      <span class="muted">Создано: {formatDateTime(request.createdAt)}</span>
+                      <span class="muted">Текущий тариф пользователя: {user.plan || "FREE"}</span>
+                    </div>
+                    <span class="pill mid">На проверке</span>
+                  </div>
+
+                  <div class="payment-chat">
+                    <div class="payment-bubble payment-bubble-user">
+                      <span class="payment-bubble-role">Комментарий клиента</span>
+                      <strong>{request.payerNote || "Клиент ничего не написал."}</strong>
+                    </div>
+
+                    <label class="payment-reply-box">
+                      <span class="payment-bubble-role">Ответ администратора</span>
+                      <textarea class="payment-reply-textarea js-admin-note" rows="4" placeholder="Например: оплату вижу, доступ включаю."></textarea>
+                    </label>
+                  </div>
+
+                  <div class="hero-actions">
+                    <button class="btn btn-primary js-review" data-action="approve" data-request-id={request.id}>Подтвердить</button>
+                    <button class="btn btn-secondary js-review" data-action="reject" data-request-id={request.id}>Отклонить</button>
+                  </div>
+                </div>
+              )) : <div class="summary-card"><span class="muted">Новых заявок нет.</span></div>}
+
+              <p id="adminStatus" class="status"></p>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script is:inline>
+      const adminStatus = document.getElementById("adminStatus");
+      function setStatus(text, type = "") {
+        if (!adminStatus) return;
+        adminStatus.textContent = text;
+        adminStatus.className = `status ${type}`.trim();
+      }
+
+      const autoGrow = (textarea) => {
+        if (!textarea) return;
+        textarea.style.height = "0px";
+        textarea.style.height = `${Math.max(textarea.scrollHeight, 132)}px`;
+      };
+
+      document.querySelectorAll(".js-admin-note").forEach((textarea) => {
+        autoGrow(textarea);
+        textarea.addEventListener("input", () => autoGrow(textarea));
+      });
+
+      document.querySelectorAll(".js-review").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const requestId = button.getAttribute("data-request-id") || "";
+          const action = button.getAttribute("data-action") || "reject";
+          const card = button.closest("[data-request-id]");
+          const noteInput = card?.querySelector(".js-admin-note");
+
+          try {
+            button.disabled = true;
+            setStatus("");
+            const response = await fetch("/api/payments/admin/review", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                requestId,
+                action,
+                adminNote: noteInput?.value || "",
+              }),
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.ok) throw new Error(data.error || "Не удалось обработать заявку.");
+            setStatus(action === "approve" ? "Заявка подтверждена." : "Заявка отклонена.", "success");
+            window.setTimeout(() => window.location.reload(), 500);
+          } catch (error) {
+            setStatus(error?.message || "Ошибка.");
+          } finally {
+            button.disabled = false;
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
+
+<style is:inline>
+  .admin-payments-panel .panel-inner {
+    position: relative;
+  }
+
+  .admin-payments-panel .panel-inner::after {
+    content: "";
+    position: absolute;
+    inset: auto -24px -24px auto;
+    width: 180px;
+    height: 180px;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(140, 104, 255, 0.12), transparent 72%);
+    pointer-events: none;
+  }
+</style>

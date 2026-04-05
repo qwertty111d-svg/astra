@@ -1,0 +1,435 @@
+---
+const ghRelease = "https://github.com/qwertty111d-svg/astraapp/releases/latest/download/AstraSetup.exe";
+const downloadUrl = ghRelease;
+import MotionBackground from "../components/MotionBackground.astro";
+---
+
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Скачать Astra — Оптимизация ПК</title>
+    <meta name="description" content="Скачайте клиент Astra для Windows. Бесплатная оптимизация системы." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  </head>
+
+  <body>
+    <MotionBackground />
+    <div class="download-shell" id="download-root" data-url={downloadUrl}>
+      <div class="orb orb-a"></div>
+      <div class="orb orb-b"></div>
+      <div class="orb orb-c"></div>
+
+      <div class="loader-card glass">
+        <a href="/" class="back-home">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5m7-7-7 7 7 7"/></svg>
+          На главную
+        </a>
+
+        <div class="logo-wrap">
+          <img src="/astra-logo.svg" alt="Astra" class="dl-logo" />
+        </div>
+
+        <span class="pill">Astra Desktop v2.4</span>
+
+        <h1>Загрузка Astra</h1>
+        <p class="muted">
+          Скачивание начнётся автоматически через несколько секунд.
+          Если ничего не произошло — нажмите кнопку ниже.
+        </p>
+
+        <div class="meta-strip">
+          <div class="meta-chip">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M7 21h10M8 17v4m8-4v4"/></svg>
+            <div>
+              <span>Платформа</span>
+              <strong>Windows 10 / 11</strong>
+            </div>
+          </div>
+          <div class="meta-chip">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <div>
+              <span>Безопасность</span>
+              <strong>Проверено</strong>
+            </div>
+          </div>
+          <div class="meta-chip">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <div>
+              <span>Размер</span>
+              <strong>~85 МБ</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="countdown-box">
+          <div class="countdown-ring">
+            <svg viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="36" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="4"/>
+              <circle cx="40" cy="40" r="36" fill="none" stroke="url(#cg)" stroke-width="4" stroke-linecap="round"
+                stroke-dasharray="226.2" stroke-dashoffset="226.2" id="countdown-circle"
+                transform="rotate(-90 40 40)"/>
+              <defs><linearGradient id="cg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#a78bfa"/><stop offset="1" stop-color="#7c3aed"/>
+              </linearGradient></defs>
+            </svg>
+            <strong id="countdown">5</strong>
+          </div>
+          <span>секунд до начала загрузки</span>
+        </div>
+
+        <div class="actions">
+          <a href="/" class="btn btn-secondary">На главную</a>
+          <a href={downloadUrl} class="btn btn-primary" id="manual-download-link">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right:6px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Скачать вручную
+          </a>
+        </div>
+
+        <p class="hint" id="download-status">
+          Скачивание начнётся автоматически.
+        </p>
+
+        <div class="install-steps">
+          <p class="steps-title">После скачивания:</p>
+          <div class="step-row"><span class="step-num">1</span><span>Запустите <strong>AstraSetup.exe</strong></span></div>
+          <div class="step-row"><span class="step-num">2</span><span>Следуйте инструкциям установщика</span></div>
+          <div class="step-row"><span class="step-num">3</span><span>Войдите в аккаунт Astra</span></div>
+        </div>
+      </div>
+    </div>
+
+    <script is:inline>
+      const root = document.getElementById("download-root");
+      const countdownEl = document.getElementById("countdown");
+      const statusEl = document.getElementById("download-status");
+      const manualLink = document.getElementById("manual-download-link");
+      const circle = document.getElementById("countdown-circle");
+      const downloadUrl = root?.dataset.url;
+      const totalDash = 226.2;
+
+      let seconds = 5;
+      countdownEl.textContent = String(seconds);
+
+      const interval = setInterval(() => {
+        seconds -= 1;
+        countdownEl.textContent = String(Math.max(seconds, 0));
+        const progress = (5 - Math.max(seconds, 0)) / 5;
+        circle.style.strokeDashoffset = String(totalDash * (1 - progress));
+
+        if (seconds <= 0) {
+          clearInterval(interval);
+        }
+      }, 1000);
+
+      setTimeout(() => {
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = "";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        statusEl.textContent = "Загрузка началась! Если ничего не произошло, нажмите «Скачать вручную».";
+        statusEl.classList.add("status-done");
+        circle.style.strokeDashoffset = "0";
+        manualLink.classList.add("pulse");
+      }, 5000);
+    </script>
+  </body>
+</html>
+
+<style>
+  :root {
+    --text: #f5f7fb;
+    --muted: #9da3b4;
+    --stroke: rgba(255, 255, 255, 0.08);
+    --accent: #a78bfa;
+    --accent-dim: #7c3aed;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    min-height: 100%;
+    background: linear-gradient(180deg, #04050a 0%, #06070d 100%);
+    color: var(--text);
+    font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+
+  a { color: inherit; text-decoration: none; }
+
+  .download-shell {
+    position: relative;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    overflow: hidden;
+  }
+
+  .orb {
+    position: absolute;
+    border-radius: 999px;
+    filter: blur(60px);
+    pointer-events: none;
+    animation: orbFloat 12s ease-in-out infinite alternate;
+  }
+
+  .orb-a {
+    width: 400px; height: 400px;
+    top: -100px; left: -100px;
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.15), transparent 68%);
+  }
+
+  .orb-b {
+    width: 350px; height: 350px;
+    right: -80px; bottom: -80px;
+    background: radial-gradient(circle, rgba(124, 58, 237, 0.12), transparent 68%);
+    animation-delay: -4s;
+  }
+
+  .orb-c {
+    width: 200px; height: 200px;
+    top: 50%; left: 60%;
+    background: radial-gradient(circle, rgba(196, 181, 253, 0.08), transparent 68%);
+    animation-delay: -8s;
+  }
+
+  @keyframes orbFloat {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(20px, -15px) scale(1.05); }
+  }
+
+  .glass {
+    background: linear-gradient(180deg, rgba(15, 18, 32, 0.92) 0%, rgba(8, 10, 18, 0.85) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    box-shadow: 0 32px 80px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.03);
+    backdrop-filter: blur(24px);
+  }
+
+  .loader-card {
+    position: relative;
+    z-index: 2;
+    width: min(100%, 660px);
+    border-radius: 28px;
+    padding: 40px 36px;
+    display: grid;
+    gap: 20px;
+    text-align: center;
+    overflow: hidden;
+    animation: cardIn 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(30px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .loader-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(167, 139, 250, 0.35), transparent);
+  }
+
+  .back-home {
+    position: absolute;
+    top: 18px; left: 22px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: var(--muted);
+    transition: color 0.2s;
+  }
+
+  .back-home:hover { color: var(--text); }
+
+  .logo-wrap { display: flex; justify-content: center; }
+
+  .dl-logo {
+    width: 56px; height: 56px;
+    filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.3));
+    animation: logoPulse 3s ease-in-out infinite;
+  }
+
+  @keyframes logoPulse {
+    0%, 100% { filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.3)); }
+    50% { filter: drop-shadow(0 0 30px rgba(139, 92, 246, 0.5)); }
+  }
+
+  .pill {
+    justify-self: center;
+    display: inline-flex;
+    align-items: center;
+    height: 34px;
+    padding: 0 14px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.82rem;
+    letter-spacing: 0.02em;
+    color: var(--accent);
+    background: rgba(167, 139, 250, 0.08);
+    border: 1px solid rgba(167, 139, 250, 0.15);
+  }
+
+  h1 {
+    font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    font-weight: 700;
+  }
+
+  .muted {
+    color: var(--muted);
+    line-height: 1.6;
+    max-width: 480px;
+    margin: 0 auto;
+    font-size: 0.95rem;
+  }
+
+  .meta-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .meta-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px;
+    border-radius: 16px;
+    text-align: left;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .meta-chip svg { flex-shrink: 0; color: var(--accent); }
+  .meta-chip div { display: grid; gap: 2px; }
+  .meta-chip span { color: var(--muted); font-size: 0.78rem; }
+  .meta-chip strong { font-size: 0.88rem; letter-spacing: -0.01em; }
+
+  .countdown-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 20px;
+  }
+
+  .countdown-ring {
+    position: relative;
+    width: 80px; height: 80px;
+  }
+
+  .countdown-ring svg { width: 100%; height: 100%; }
+
+  .countdown-ring strong {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-size: 1.8rem;
+    letter-spacing: -0.04em;
+    color: var(--text);
+  }
+
+  #countdown-circle { transition: stroke-dashoffset 1s linear; }
+
+  .countdown-box > span { color: var(--muted); font-size: 0.88rem; }
+
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 50px;
+    padding: 0 20px;
+    border-radius: 14px;
+    font-weight: 700;
+    font-size: 0.92rem;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    font-family: inherit;
+  }
+
+  .btn:hover { transform: translateY(-1px); }
+
+  .btn-primary {
+    color: white;
+    background: linear-gradient(135deg, var(--accent-dim) 0%, var(--accent) 100%);
+    box-shadow: 0 8px 28px rgba(124, 58, 237, 0.3);
+  }
+
+  .btn-primary:hover { box-shadow: 0 12px 36px rgba(124, 58, 237, 0.45); }
+
+  .btn-secondary {
+    color: #edf0f8;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .hint { color: #8b8ea0; font-size: 0.88rem; transition: color 0.3s; }
+  .status-done { color: #86efac; }
+
+  .pulse { animation: pulse 1.5s ease-in-out infinite; }
+
+  .install-steps {
+    text-align: left;
+    padding: 18px 20px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .steps-title {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+  }
+
+  .step-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    font-size: 0.9rem;
+    color: #d0d3e0;
+  }
+
+  .step-row + .step-row { border-top: 1px solid rgba(255,255,255,0.04); }
+
+  .step-num {
+    width: 26px; height: 26px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    background: rgba(167, 139, 250, 0.1);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 8px 28px rgba(124, 58, 237, 0.3); }
+    50% { transform: scale(1.02); box-shadow: 0 12px 36px rgba(124, 58, 237, 0.5); }
+  }
+
+  @media (max-width: 640px) {
+    .loader-card { padding: 28px 20px; border-radius: 22px; }
+    .meta-strip { grid-template-columns: 1fr; }
+    .actions { grid-template-columns: 1fr; }
+  }
+</style>
